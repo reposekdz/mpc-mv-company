@@ -101,3 +101,29 @@ export interface Meeting {
   notes: string;
   agenda: string;
 }
+
+export type HomeworkStatus = "pending" | "in_progress" | "completed" | "submitted" | "reviewed" | "approved" | "rejected";
+export type HomeworkPriority = "low" | "medium" | "high" | "urgent";
+export type HomeworkCategory = "remote_work" | "field_work" | "site_visit" | "documentation" | "training" | "other";
+
+export interface Homework {
+  id: string;
+  title: string;
+  description: string;
+  employeeId: string;
+  employeeName: string;
+  category: HomeworkCategory;
+  status: HomeworkStatus;
+  priority: HomeworkPriority;
+  assignedDate: string;
+  dueDate: string;
+  completedDate?: string;
+  location: string;
+  coordinates?: { lat: number; lng: number };
+  attachments: { name: string; url: string; type: string }[];
+  notes: string;
+  supervisorNotes?: string;
+  hoursWorked: number;
+  approvedBy?: string;
+  approvalDate?: string;
+}
