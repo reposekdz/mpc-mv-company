@@ -9,6 +9,7 @@ import { SalariesPage } from "@/components/dashboard/SalariesPage";
 import { ReportsPage } from "@/components/dashboard/ReportsPage";
 import { AnalyticsPage } from "@/components/dashboard/AnalyticsPage";
 import { ConsultingPage } from "@/components/dashboard/ConsultingPage";
+import { MeetingsPage } from "@/components/dashboard/MeetingsPage";
 import { useAuthStore } from "@/store/useAuthStore";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -37,6 +38,7 @@ function App() {
           <Route path="reports" element={<ReportsPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="consulting" element={<ConsultingPage />} />
+          <Route path="meetings" element={<MeetingsPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

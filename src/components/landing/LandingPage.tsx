@@ -1,5 +1,7 @@
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { LoginDialog } from "./LoginDialog";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import {
   Mountain,
   HardHat,
@@ -30,62 +32,34 @@ const fadeUp = {
   }),
 };
 
-const stats = [
-  { label: "Active Projects", value: "24+", icon: HardHat },
-  { label: "Fleet Vehicles", value: "50+", icon: Truck },
-  { label: "Team Members", value: "200+", icon: Users },
-  { label: "Years Experience", value: "15+", icon: TrendingUp },
-];
-
-const services = [
-  {
-    icon: Pickaxe,
-    title: "Mining Operations",
-    description:
-      "Full-scale mining from exploration surveys to mineral extraction with advanced geological analysis and sustainable practices.",
-  },
-  {
-    icon: Building2,
-    title: "Construction Projects",
-    description:
-      "Infrastructure development including highways, bridges, commercial buildings, and industrial facilities built to international standards.",
-  },
-  {
-    icon: Truck,
-    title: "Fleet Management",
-    description:
-      "Heavy equipment fleet operations with real-time tracking, maintenance scheduling, and fuel efficiency optimization.",
-  },
-  {
-    icon: BarChart3,
-    title: "Analytics & Reporting",
-    description:
-      "Data-driven insights with comprehensive financial reports, performance dashboards, and predictive analytics.",
-  },
-  {
-    icon: Shield,
-    title: "Safety & Compliance",
-    description:
-      "Industry-leading safety protocols, regular audits, and full regulatory compliance across all operation sites.",
-  },
-  {
-    icon: Users,
-    title: "Consulting Services",
-    description:
-      "Expert consulting on project planning, resource allocation, and operational strategy for maximum ROI.",
-  },
-];
-
-const whyUs = [
-  "ISO 9001 certified operations across all divisions",
-  "Zero critical safety incidents in 24 months",
-  "Fleet utilization rate above 85%",
-  "On-time project delivery rate of 94%",
-  "Sustainable mining practices certified",
-  "24/7 operations monitoring and support",
-];
-
 export function LandingPage() {
+  const { t } = useTranslation();
+
+  const stats = [
+    { label: t("landing.activeProjects"), value: "24+", icon: HardHat },
+    { label: t("landing.fleetVehicles"), value: "50+", icon: Truck },
+    { label: t("landing.teamMembers"), value: "200+", icon: Users },
+    { label: t("landing.yearsExperience"), value: "15+", icon: TrendingUp },
+  ];
+
+  const services = [
+    { icon: Pickaxe, title: t("services.mining"), description: t("services.miningDesc") },
+    { icon: Building2, title: t("services.construction"), description: t("services.constructionDesc") },
+    { icon: Truck, title: t("services.fleet"), description: t("services.fleetDesc") },
+    { icon: BarChart3, title: t("services.analyticsReporting"), description: t("services.analyticsReportingDesc") },
+    { icon: Shield, title: t("services.safety"), description: t("services.safetyDesc") },
+    { icon: Users, title: t("services.consultingService"), description: t("services.consultingServiceDesc") },
+  ];
+
+  const whyUsItems = [
+    t("whyUs.iso"),
+    t("whyUs.zeroIncidents"),
+    t("whyUs.fleetRate"),
+    t("whyUs.onTime"),
+    t("whyUs.sustainable"),
+    t("whyUs.support"),
+  ];
+
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Navigation */}
@@ -96,12 +70,20 @@ export function LandingPage() {
             <span className="heading-md text-foreground tracking-wider">MPC-MV</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
-            <a href="#services" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Services</a>
-            <a href="#about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">About</a>
-            <a href="#contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</a>
+            <a href="#services" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              {t("nav.services")}
+            </a>
+            <a href="#about" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              {t("nav.about")}
+            </a>
+            <a href="#contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              {t("nav.contact")}
+            </a>
+            <LanguageSwitcher />
             <LoginDialog />
           </div>
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center gap-2">
+            <LanguageSwitcher showLabel={false} size="icon" />
             <LoginDialog />
           </div>
         </div>
@@ -109,7 +91,6 @@ export function LandingPage() {
 
       {/* Hero Section */}
       <section className="relative pt-16 min-h-screen flex items-center">
-        {/* Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#1C2536] via-[#253350] to-[#1C2536]" />
         <div
           className="absolute inset-0 opacity-10"
@@ -122,13 +103,9 @@ export function LandingPage() {
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
 
         <div className="relative max-w-7xl mx-auto px-6 py-24 grid lg:grid-cols-2 gap-16 items-center">
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            className="text-white"
-          >
+          <motion.div initial="hidden" animate="visible" className="text-white">
             <motion.div custom={0} variants={fadeUp} className="label-uppercase text-steel-light mb-4 tracking-widest">
-              Mining & Construction Excellence
+              {t("landing.tagline")}
             </motion.div>
             <motion.h1
               custom={1}
@@ -136,14 +113,12 @@ export function LandingPage() {
               className="heading-xl text-white mb-6 leading-none"
               style={{ fontSize: "clamp(2.5rem, 5vw, 4.5rem)" }}
             >
-              Powering Progress,
+              {t("landing.heroTitle1")}
               <br />
-              <span className="text-steel-light">Building Futures</span>
+              <span className="text-steel-light">{t("landing.heroTitle2")}</span>
             </motion.h1>
             <motion.p custom={2} variants={fadeUp} className="text-lg text-gray-300 mb-8 max-w-lg leading-relaxed">
-              MPC-MV Company Ltd delivers world-class mining and construction services across the
-              region. From mineral extraction to infrastructure development, we build the foundations
-              of tomorrow.
+              {t("landing.heroDescription")}
             </motion.p>
             <motion.div custom={3} variants={fadeUp} className="flex flex-wrap gap-4">
               <LoginDialog />
@@ -153,24 +128,15 @@ export function LandingPage() {
                 className="border-white/30 text-white hover:bg-white/10 px-8 py-6 text-base gap-2"
                 onClick={() => document.getElementById("services")?.scrollIntoView({ behavior: "smooth" })}
               >
-                Our Services
+                {t("landing.ourServices")}
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </motion.div>
           </motion.div>
 
-          {/* Floating Stat Cards */}
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            className="hidden lg:grid grid-cols-2 gap-4"
-          >
+          <motion.div initial="hidden" animate="visible" className="hidden lg:grid grid-cols-2 gap-4">
             {stats.map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                custom={i + 2}
-                variants={fadeUp}
-              >
+              <motion.div key={stat.label} custom={i + 2} variants={fadeUp}>
                 <Card className="bg-white/5 backdrop-blur-md border-white/10 hover:bg-white/10 transition-all duration-300 hover:-translate-y-1">
                   <CardContent className="p-6">
                     <stat.icon className="w-8 h-8 text-steel-light mb-3" />
@@ -183,7 +149,6 @@ export function LandingPage() {
           </motion.div>
         </div>
 
-        {/* Scroll Indicator */}
         <motion.div
           className="absolute bottom-8 left-1/2 -translate-x-1/2"
           animate={{ y: [0, 8, 0] }}
@@ -202,12 +167,9 @@ export function LandingPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <span className="label-uppercase text-steel mb-3 block">What We Do</span>
-            <h2 className="heading-lg text-foreground mb-4">Our Services</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Comprehensive mining and construction solutions powered by cutting-edge technology and
-              decades of industry expertise.
-            </p>
+            <span className="label-uppercase text-steel mb-3 block">{t("landing.whatWeDo")}</span>
+            <h2 className="heading-lg text-foreground mb-4">{t("landing.ourServices")}</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">{t("landing.servicesSubtitle")}</p>
           </motion.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -225,9 +187,7 @@ export function LandingPage() {
                       <service.icon className="w-6 h-6 text-steel" />
                     </div>
                     <h3 className="heading-sm text-foreground mb-2">{service.title}</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      {service.description}
-                    </p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{service.description}</p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -245,15 +205,11 @@ export function LandingPage() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
             >
-              <span className="label-uppercase text-steel mb-3 block">About MPC-MV</span>
-              <h2 className="heading-lg text-foreground mb-6">Why Choose Us</h2>
-              <p className="text-muted-foreground mb-8 leading-relaxed">
-                Founded with a vision to transform the mining and construction industry, MPC-MV
-                Company Ltd has grown into one of the region's most trusted operators. Our commitment
-                to safety, efficiency, and sustainability sets us apart in every project we undertake.
-              </p>
+              <span className="label-uppercase text-steel mb-3 block">{t("landing.aboutSubtitle")}</span>
+              <h2 className="heading-lg text-foreground mb-6">{t("landing.aboutTitle")}</h2>
+              <p className="text-muted-foreground mb-8 leading-relaxed">{t("landing.aboutDescription")}</p>
               <div className="space-y-3">
-                {whyUs.map((item) => (
+                {whyUsItems.map((item) => (
                   <div key={item} className="flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-hunter mt-0.5 shrink-0" />
                     <span className="text-sm text-foreground">{item}</span>
@@ -271,25 +227,25 @@ export function LandingPage() {
               <Card className="bg-steel text-white border-0">
                 <CardContent className="p-6">
                   <div className="heading-lg">$42M+</div>
-                  <div className="text-sm text-white/70 mt-1">Total Revenue 2025</div>
+                  <div className="text-sm text-white/70 mt-1">{t("landing.totalRevenue2025")}</div>
                 </CardContent>
               </Card>
               <Card className="bg-hunter text-white border-0">
                 <CardContent className="p-6">
                   <div className="heading-lg">98%</div>
-                  <div className="text-sm text-white/70 mt-1">Client Satisfaction</div>
+                  <div className="text-sm text-white/70 mt-1">{t("landing.clientSatisfaction")}</div>
                 </CardContent>
               </Card>
               <Card className="bg-[#1C2536] text-white border-0">
                 <CardContent className="p-6">
                   <div className="heading-lg">150+</div>
-                  <div className="text-sm text-white/70 mt-1">Projects Delivered</div>
+                  <div className="text-sm text-white/70 mt-1">{t("landing.projectsDelivered")}</div>
                 </CardContent>
               </Card>
               <Card className="bg-slate-steel text-white border-0">
                 <CardContent className="p-6">
                   <div className="heading-lg">5</div>
-                  <div className="text-sm text-white/70 mt-1">Operating Regions</div>
+                  <div className="text-sm text-white/70 mt-1">{t("landing.operatingRegions")}</div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -306,18 +262,16 @@ export function LandingPage() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <span className="label-uppercase text-steel mb-3 block">Get In Touch</span>
-            <h2 className="heading-lg text-foreground mb-4">Contact Us</h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">
-              Ready to start your next project? Our team is available around the clock.
-            </p>
+            <span className="label-uppercase text-steel mb-3 block">{t("landing.contactSubtitle")}</span>
+            <h2 className="heading-lg text-foreground mb-4">{t("landing.contactTitle")}</h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">{t("landing.contactDescription")}</p>
           </motion.div>
 
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {[
-              { icon: Phone, label: "Phone", value: "+250 788 123 456" },
-              { icon: Mail, label: "Email", value: "info@mpc-mv.com" },
-              { icon: MapPin, label: "Address", value: "KG 123 St, Kigali, Rwanda" },
+              { icon: Phone, label: t("landing.phone"), value: "+250 788 123 456" },
+              { icon: Mail, label: t("landing.email"), value: "info@mpc-mv.com" },
+              { icon: MapPin, label: t("landing.address"), value: "KG 123 St, Kigali, Rwanda" },
             ].map((item, i) => (
               <motion.div
                 key={item.label}
@@ -350,15 +304,13 @@ export function LandingPage() {
               <span className="heading-sm text-white">MPC-MV Company Ltd</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-400">
-              <a href="#services" className="hover:text-white transition-colors">Services</a>
-              <a href="#about" className="hover:text-white transition-colors">About</a>
-              <a href="#contact" className="hover:text-white transition-colors">Contact</a>
+              <a href="#services" className="hover:text-white transition-colors">{t("nav.services")}</a>
+              <a href="#about" className="hover:text-white transition-colors">{t("nav.about")}</a>
+              <a href="#contact" className="hover:text-white transition-colors">{t("nav.contact")}</a>
             </div>
           </div>
           <Separator className="my-6 bg-white/10" />
-          <p className="text-center text-sm text-gray-500">
-            © 2026 MPC-MV Company Ltd. All rights reserved. Mining & Construction Management.
-          </p>
+          <p className="text-center text-sm text-gray-500">{t("landing.footer")}</p>
         </div>
       </footer>
     </div>

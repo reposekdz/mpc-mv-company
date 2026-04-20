@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,7 +46,6 @@ import {
   Trash2,
   Edit,
   MapPin,
-  Calendar,
   Filter,
 } from "lucide-react";
 
@@ -65,6 +65,7 @@ const priorityColors: Record<JobPriority, string> = {
 };
 
 export function JobsPage() {
+  const { t } = useTranslation();
   const { jobs, addJob, updateJob, deleteJob } = useAppStore();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -78,6 +79,27 @@ export function JobsPage() {
     const matchesStatus = statusFilter === "all" || j.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const statusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      pending: t("jobs.pending"),
+      in_progress: t("jobs.inProgress"),
+      completed: t("jobs.completed"),
+      on_hold: t("jobs.onHold"),
+      cancelled: t("jobs.cancelled"),
+    };
+    return map[status] || status;
+  };
+
+  const priorityLabel = (priority: string) => {
+    const map: Record<string, string> = {
+      low: t("jobs.low"),
+      medium: t("jobs.medium"),
+      high: t("jobs.high"),
+      critical: t("jobs.critical"),
+    };
+    return map[priority] || priority;
+  };
 
   const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -122,30 +144,24 @@ export function JobsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex items-center gap-3 flex-1">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search jobs..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
+            <Input placeholder={t("jobs.searchJobs")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40">
               <Filter className="w-3.5 h-3.5 mr-2" />
-              <SelectValue placeholder="Status" />
+              <SelectValue placeholder={t("jobs.status")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="in_progress">In Progress</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="on_hold">On Hold</SelectItem>
-              <SelectItem value="cancelled">Cancelled</SelectItem>
+              <SelectItem value="all">{t("jobs.allStatus")}</SelectItem>
+              <SelectItem value="pending">{t("jobs.pending")}</SelectItem>
+              <SelectItem value="in_progress">{t("jobs.inProgress")}</SelectItem>
+              <SelectItem value="completed">{t("jobs.completed")}</SelectItem>
+              <SelectItem value="on_hold">{t("jobs.onHold")}</SelectItem>
+              <SelectItem value="cancelled">{t("jobs.cancelled")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -153,85 +169,84 @@ export function JobsPage() {
           <DialogTrigger asChild>
             <Button className="bg-steel hover:bg-steel-dark gap-2">
               <Plus className="w-4 h-4" />
-              Add New Job
+              {t("jobs.addNewJob")}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle className="heading-md">Add New Job</DialogTitle>
+              <DialogTitle className="heading-md">{t("jobs.addNewJob")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleAdd} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <Label htmlFor="title">Job Title</Label>
+                  <Label htmlFor="title">{t("jobs.jobTitle")}</Label>
                   <Input id="title" name="title" required />
                 </div>
                 <div className="col-span-2">
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">{t("jobs.description")}</Label>
                   <Textarea id="description" name="description" rows={2} />
                 </div>
                 <div>
-                  <Label>Type</Label>
+                  <Label>{t("jobs.type")}</Label>
                   <Select name="type" defaultValue="construction">
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="mining">Mining</SelectItem>
-                      <SelectItem value="construction">Construction</SelectItem>
+                      <SelectItem value="mining">{t("jobs.mining")}</SelectItem>
+                      <SelectItem value="construction">{t("jobs.construction")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Priority</Label>
+                  <Label>{t("jobs.priority")}</Label>
                   <Select name="priority" defaultValue="medium">
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
+                      <SelectItem value="low">{t("jobs.low")}</SelectItem>
+                      <SelectItem value="medium">{t("jobs.medium")}</SelectItem>
+                      <SelectItem value="high">{t("jobs.high")}</SelectItem>
+                      <SelectItem value="critical">{t("jobs.critical")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="assignedTo">Assigned To</Label>
+                  <Label htmlFor="assignedTo">{t("jobs.assignedTo")}</Label>
                   <Input id="assignedTo" name="assignedTo" required />
                 </div>
                 <div>
-                  <Label htmlFor="location">Location</Label>
+                  <Label htmlFor="location">{t("jobs.location")}</Label>
                   <Input id="location" name="location" required />
                 </div>
                 <div>
-                  <Label htmlFor="startDate">Start Date</Label>
+                  <Label htmlFor="startDate">{t("jobs.startDate")}</Label>
                   <Input id="startDate" name="startDate" type="date" required />
                 </div>
                 <div>
-                  <Label htmlFor="endDate">End Date</Label>
+                  <Label htmlFor="endDate">{t("jobs.endDate")}</Label>
                   <Input id="endDate" name="endDate" type="date" required />
                 </div>
                 <div>
-                  <Label htmlFor="budget">Budget ($)</Label>
+                  <Label htmlFor="budget">{t("jobs.budget")} ($)</Label>
                   <Input id="budget" name="budget" type="number" required />
                 </div>
               </div>
-              <Button type="submit" className="w-full bg-steel hover:bg-steel-dark">Create Job</Button>
+              <Button type="submit" className="w-full bg-steel hover:bg-steel-dark">{t("jobs.createJob")}</Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Table */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <Card>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Job Title</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Budget</TableHead>
+                  <TableHead>{t("jobs.jobTitle")}</TableHead>
+                  <TableHead>{t("jobs.type")}</TableHead>
+                  <TableHead>{t("jobs.status")}</TableHead>
+                  <TableHead>{t("jobs.priority")}</TableHead>
+                  <TableHead>{t("jobs.progress")}</TableHead>
+                  <TableHead>{t("jobs.budget")}</TableHead>
                   <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
@@ -248,16 +263,18 @@ export function JobsPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary" className="text-[10px] capitalize">{job.type}</Badge>
+                      <Badge variant="secondary" className="text-[10px] capitalize">
+                        {job.type === "mining" ? t("jobs.mining") : t("jobs.construction")}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className={`text-[10px] ${statusColors[job.status]}`}>
-                        {job.status.replace("_", " ")}
+                        {statusLabel(job.status)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className={`text-[10px] ${priorityColors[job.priority]}`}>
-                        {job.priority}
+                        {priorityLabel(job.priority)}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -276,101 +293,107 @@ export function JobsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => setEditJob(job)}>
-                            <Edit className="w-3.5 h-3.5 mr-2" /> Edit
+                            <Edit className="w-3.5 h-3.5 mr-2" /> {t("common.edit")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => deleteJob(job.id)} className="text-destructive">
-                            <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                            <Trash2 className="w-3.5 h-3.5 mr-2" /> {t("common.delete")}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}
+                {filtered.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
+                      {t("jobs.noJobsFound")}
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       </motion.div>
 
-      {/* Edit Dialog */}
       <Dialog open={!!editJob} onOpenChange={(o) => !o && setEditJob(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle className="heading-md">Edit Job</DialogTitle>
+            <DialogTitle className="heading-md">{t("jobs.editJob")}</DialogTitle>
           </DialogHeader>
           {editJob && (
             <form onSubmit={handleEdit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <Label>Job Title</Label>
+                  <Label>{t("jobs.jobTitle")}</Label>
                   <Input name="title" defaultValue={editJob.title} required />
                 </div>
                 <div className="col-span-2">
-                  <Label>Description</Label>
+                  <Label>{t("jobs.description")}</Label>
                   <Textarea name="description" defaultValue={editJob.description} rows={2} />
                 </div>
                 <div>
-                  <Label>Type</Label>
+                  <Label>{t("jobs.type")}</Label>
                   <Select name="type" defaultValue={editJob.type}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="mining">Mining</SelectItem>
-                      <SelectItem value="construction">Construction</SelectItem>
+                      <SelectItem value="mining">{t("jobs.mining")}</SelectItem>
+                      <SelectItem value="construction">{t("jobs.construction")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Status</Label>
+                  <Label>{t("jobs.status")}</Label>
                   <Select name="status" defaultValue={editJob.status}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="in_progress">In Progress</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="on_hold">On Hold</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                      <SelectItem value="pending">{t("jobs.pending")}</SelectItem>
+                      <SelectItem value="in_progress">{t("jobs.inProgress")}</SelectItem>
+                      <SelectItem value="completed">{t("jobs.completed")}</SelectItem>
+                      <SelectItem value="on_hold">{t("jobs.onHold")}</SelectItem>
+                      <SelectItem value="cancelled">{t("jobs.cancelled")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Priority</Label>
+                  <Label>{t("jobs.priority")}</Label>
                   <Select name="priority" defaultValue={editJob.priority}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="critical">Critical</SelectItem>
+                      <SelectItem value="low">{t("jobs.low")}</SelectItem>
+                      <SelectItem value="medium">{t("jobs.medium")}</SelectItem>
+                      <SelectItem value="high">{t("jobs.high")}</SelectItem>
+                      <SelectItem value="critical">{t("jobs.critical")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Assigned To</Label>
+                  <Label>{t("jobs.assignedTo")}</Label>
                   <Input name="assignedTo" defaultValue={editJob.assignedTo} required />
                 </div>
                 <div>
-                  <Label>Location</Label>
+                  <Label>{t("jobs.location")}</Label>
                   <Input name="location" defaultValue={editJob.location} required />
                 </div>
                 <div>
-                  <Label>Start Date</Label>
+                  <Label>{t("jobs.startDate")}</Label>
                   <Input name="startDate" type="date" defaultValue={editJob.startDate} required />
                 </div>
                 <div>
-                  <Label>End Date</Label>
+                  <Label>{t("jobs.endDate")}</Label>
                   <Input name="endDate" type="date" defaultValue={editJob.endDate} required />
                 </div>
                 <div>
-                  <Label>Budget ($)</Label>
+                  <Label>{t("jobs.budget")} ($)</Label>
                   <Input name="budget" type="number" defaultValue={editJob.budget} required />
                 </div>
                 <div>
-                  <Label>Progress (%)</Label>
+                  <Label>{t("jobs.progress")} (%)</Label>
                   <Input name="progress" type="number" min={0} max={100} defaultValue={editJob.progress} required />
                 </div>
               </div>
-              <Button type="submit" className="w-full bg-steel hover:bg-steel-dark">Update Job</Button>
+              <Button type="submit" className="w-full bg-steel hover:bg-steel-dark">{t("jobs.updateJob")}</Button>
             </form>
           )}
         </DialogContent>

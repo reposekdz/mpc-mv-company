@@ -1,4 +1,5 @@
 import { useNavigate, useLocation, Outlet } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   SidebarProvider,
   Sidebar,
@@ -25,6 +26,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { useAuthStore } from "@/store/useAuthStore";
 import {
   LayoutDashboard,
@@ -38,22 +40,25 @@ import {
   Mountain,
   ChevronUp,
   User,
+  CalendarDays,
 } from "lucide-react";
 
-const navItems = [
-  { title: "Overview", path: "/dashboard", icon: LayoutDashboard },
-  { title: "Jobs", path: "/dashboard/jobs", icon: Briefcase },
-  { title: "Trucks", path: "/dashboard/trucks", icon: Truck },
-  { title: "Salaries", path: "/dashboard/salaries", icon: DollarSign },
-  { title: "Reports", path: "/dashboard/reports", icon: FileText },
-  { title: "Analytics", path: "/dashboard/analytics", icon: BarChart3 },
-  { title: "Consulting", path: "/dashboard/consulting", icon: MessageSquare },
-];
-
 export function DashboardLayout() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { logout } = useAuthStore();
+
+  const navItems = [
+    { title: t("nav.overview"), path: "/dashboard", icon: LayoutDashboard },
+    { title: t("nav.jobs"), path: "/dashboard/jobs", icon: Briefcase },
+    { title: t("nav.trucks"), path: "/dashboard/trucks", icon: Truck },
+    { title: t("nav.salaries"), path: "/dashboard/salaries", icon: DollarSign },
+    { title: t("nav.reports"), path: "/dashboard/reports", icon: FileText },
+    { title: t("nav.analytics"), path: "/dashboard/analytics", icon: BarChart3 },
+    { title: t("nav.consulting"), path: "/dashboard/consulting", icon: MessageSquare },
+    { title: t("nav.meetings"), path: "/dashboard/meetings", icon: CalendarDays },
+  ];
 
   const handleLogout = () => {
     logout();
@@ -70,14 +75,14 @@ export function DashboardLayout() {
             </div>
             <div>
               <div className="heading-sm text-sidebar-foreground leading-tight">MPC-MV</div>
-              <div className="text-[11px] text-sidebar-foreground/50">Management Portal</div>
+              <div className="text-[11px] text-sidebar-foreground/50">{t("nav.managementPortal")}</div>
             </div>
           </div>
         </SidebarHeader>
         <SidebarSeparator />
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+            <SidebarGroupLabel>{t("nav.navigation")}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {navItems.map((item) => (
@@ -115,12 +120,12 @@ export function DashboardLayout() {
                 <DropdownMenuContent side="top" align="start" className="w-56">
                   <DropdownMenuItem>
                     <User className="w-4 h-4 mr-2" />
-                    Profile
+                    {t("nav.profile")}
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                     <LogOut className="w-4 h-4 mr-2" />
-                    Logout
+                    {t("nav.logout")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -134,12 +139,13 @@ export function DashboardLayout() {
           <Separator orientation="vertical" className="h-5" />
           <div className="flex-1">
             <h1 className="heading-sm text-foreground">
-              {navItems.find((n) => n.path === location.pathname)?.title || "Dashboard"}
+              {navItems.find((n) => n.path === location.pathname)?.title || t("nav.dashboard")}
             </h1>
           </div>
+          <LanguageSwitcher variant="ghost" />
           <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
             <LogOut className="w-3.5 h-3.5" />
-            Logout
+            {t("nav.logout")}
           </Button>
         </header>
         <main className="flex-1 p-6">

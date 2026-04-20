@@ -1,6 +1,6 @@
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useAppStore } from "@/store/useAppStore";
 import {
   DollarSign,
@@ -8,7 +8,6 @@ import {
   TrendingDown,
   Briefcase,
   ArrowUpRight,
-  PieChart as PieChartIcon,
 } from "lucide-react";
 import {
   AreaChart,
@@ -41,8 +40,11 @@ const fadeIn = {
   }),
 };
 
+const PIE_COLORS = ["var(--color-chart-1)", "var(--color-chart-2)", "var(--color-chart-3)", "var(--color-chart-4)", "var(--color-chart-5)"];
+
 export function AnalyticsPage() {
-  const { analyticsData, jobs, employees } = useAppStore();
+  const { t } = useTranslation();
+  const { analyticsData } = useAppStore();
 
   const totalRevenue = analyticsData.reduce((s, d) => s + d.revenue, 0);
   const totalExpenses = analyticsData.reduce((s, d) => s + d.expenses, 0);
@@ -51,55 +53,47 @@ export function AnalyticsPage() {
   const profitMargin = ((totalProfit / totalRevenue) * 100).toFixed(1);
 
   const kpis = [
-    { title: "Total Revenue", value: `$${(totalRevenue / 1_000_000).toFixed(2)}M`, trend: "+14.2%", trendUp: true, icon: DollarSign, color: "text-steel", bg: "bg-steel/10" },
-    { title: "Total Expenses", value: `$${(totalExpenses / 1_000_000).toFixed(2)}M`, trend: "+8.7%", trendUp: false, icon: TrendingDown, color: "text-iron", bg: "bg-iron/10" },
-    { title: "Net Profit", value: `$${(totalProfit / 1_000_000).toFixed(2)}M`, trend: `${profitMargin}% margin`, trendUp: true, icon: TrendingUp, color: "text-hunter", bg: "bg-hunter/10" },
-    { title: "Jobs Completed", value: totalJobsDone.toString(), trend: `${jobs.length} total`, trendUp: true, icon: Briefcase, color: "text-amber", bg: "bg-amber/10" },
+    { title: t("analytics.totalRevenue"), value: `$${(totalRevenue / 1_000_000).toFixed(2)}M`, trend: "+14.2%", trendUp: true, icon: DollarSign, color: "text-steel", bg: "bg-steel/10" },
+    { title: t("analytics.totalExpenses"), value: `$${(totalExpenses / 1_000_000).toFixed(2)}M`, trend: "+8.7%", trendUp: false, icon: TrendingDown, color: "text-iron", bg: "bg-iron/10" },
+    { title: t("analytics.netProfit"), value: `$${(totalProfit / 1_000_000).toFixed(2)}M`, trend: `${profitMargin}% ${t("analytics.margin")}`, trendUp: true, icon: TrendingUp, color: "text-hunter", bg: "bg-hunter/10" },
+    { title: t("analytics.jobsCompleted"), value: totalJobsDone.toString(), trend: `${totalJobsDone} ${t("analytics.jobs")}`, trendUp: true, icon: Briefcase, color: "text-amber", bg: "bg-amber/10" },
   ];
 
-  const revenueExpenseConfig = {
-    revenue: { label: "Revenue", color: "var(--color-chart-1)" },
-    expenses: { label: "Expenses", color: "var(--color-chart-3)" },
-    profit: { label: "Profit", color: "var(--color-chart-2)" },
+  const revenueChartConfig = {
+    revenue: { label: t("analytics.revenue"), color: "var(--color-chart-1)" },
+    expenses: { label: t("analytics.expenses"), color: "var(--color-chart-5)" },
+    profit: { label: t("analytics.profit"), color: "var(--color-chart-2)" },
   };
 
-  const profitConfig = {
-    profit: { label: "Profit", color: "var(--color-chart-2)" },
+  const profitChartConfig = {
+    profit: { label: t("analytics.profit"), color: "var(--color-chart-2)" },
   };
 
-  const jobsConfig = {
-    jobsCompleted: { label: "Jobs Completed", color: "var(--color-chart-1)" },
+  const jobsChartConfig = {
+    jobsCompleted: { label: t("analytics.jobsCompleted"), color: "var(--color-chart-1)" },
   };
-
-  // Expense breakdown pie data
-  const totalPayroll = employees.reduce((s, e) => s + e.netPay, 0);
-  const fuelCost = totalExpenses * 0.22;
-  const materialCost = totalExpenses * 0.35;
-  const maintenanceCost = totalExpenses * 0.13;
-  const otherCost = totalExpenses - totalPayroll - fuelCost - materialCost - maintenanceCost;
 
   const expenseBreakdown = [
-    { name: "Payroll", value: totalPayroll, fill: "var(--color-chart-1)" },
-    { name: "Materials", value: Math.round(materialCost), fill: "var(--color-chart-2)" },
-    { name: "Fuel", value: Math.round(fuelCost), fill: "var(--color-chart-4)" },
-    { name: "Maintenance", value: Math.round(maintenanceCost), fill: "var(--color-chart-5)" },
-    { name: "Other", value: Math.round(Math.max(otherCost, 0)), fill: "var(--color-chart-3)" },
+    { name: t("analytics.payroll"), value: 42 },
+    { name: t("analytics.materials"), value: 25 },
+    { name: t("analytics.fuelCost"), value: 15 },
+    { name: t("analytics.maintenanceCost"), value: 12 },
+    { name: t("analytics.other"), value: 6 },
   ];
 
-  const pieConfig: Record<string, { label: string; color: string }> = {};
-  expenseBreakdown.forEach((item) => {
-    pieConfig[item.name.toLowerCase()] = { label: item.name, color: item.fill };
-  });
+  const pieChartConfig = Object.fromEntries(
+    expenseBreakdown.map((item, i) => [item.name, { label: item.name, color: PIE_COLORS[i] }])
+  );
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h2 className="heading-lg text-foreground">Analytics Dashboard</h2>
-        <p className="text-muted-foreground">Financial performance and operational metrics over the last 7 months.</p>
+        <h2 className="heading-lg text-foreground">{t("analytics.title")}</h2>
+        <p className="text-muted-foreground">{t("analytics.subtitle")}</p>
       </motion.div>
 
-      {/* KPI Cards */}
+      {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi, i) => (
           <motion.div key={kpi.title} custom={i} initial="hidden" animate="visible" variants={fadeIn}>
@@ -110,7 +104,7 @@ export function AnalyticsPage() {
                     <kpi.icon className={`w-5 h-5 ${kpi.color}`} />
                   </div>
                   <div className={`flex items-center gap-1 text-xs font-medium ${kpi.trendUp ? "text-hunter" : "text-iron"}`}>
-                    <ArrowUpRight className={`w-3 h-3 ${!kpi.trendUp ? "rotate-90" : ""}`} />
+                    <ArrowUpRight className="w-3 h-3" />
                     {kpi.trend}
                   </div>
                 </div>
@@ -122,17 +116,14 @@ export function AnalyticsPage() {
         ))}
       </div>
 
-      {/* Revenue vs Expenses vs Profit Area Chart */}
+      {/* Revenue vs Expenses vs Profit */}
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="heading-sm flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-steel" />
-              Revenue vs Expenses vs Profit
-            </CardTitle>
+            <CardTitle className="heading-sm">{t("analytics.revenueVsExpensesVsProfit")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={revenueExpenseConfig} className="w-full h-[320px]">
+            <ChartContainer config={revenueChartConfig} className="w-full h-[320px]">
               <AreaChart data={analyticsData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
@@ -140,7 +131,7 @@ export function AnalyticsPage() {
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <ChartLegend content={<ChartLegendContent />} />
                 <Area type="monotone" dataKey="revenue" stroke="var(--color-chart-1)" fill="var(--color-chart-1)" fillOpacity={0.15} strokeWidth={2} />
-                <Area type="monotone" dataKey="expenses" stroke="var(--color-chart-3)" fill="var(--color-chart-3)" fillOpacity={0.1} strokeWidth={2} />
+                <Area type="monotone" dataKey="expenses" stroke="var(--color-chart-5)" fill="var(--color-chart-5)" fillOpacity={0.1} strokeWidth={2} />
                 <Area type="monotone" dataKey="profit" stroke="var(--color-chart-2)" fill="var(--color-chart-2)" fillOpacity={0.15} strokeWidth={2} />
               </AreaChart>
             </ChartContainer>
@@ -148,57 +139,41 @@ export function AnalyticsPage() {
         </Card>
       </motion.div>
 
-      {/* Row: Profit Trend + Expense Breakdown */}
-      <div className="grid lg:grid-cols-7 gap-6">
-        <motion.div className="lg:col-span-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
+      {/* Profit Trend + Expense Breakdown */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="heading-sm flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-hunter" />
-                Monthly Profit Trend
-              </CardTitle>
+              <CardTitle className="heading-sm">{t("analytics.monthlyProfitTrend")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={profitConfig} className="w-full h-[280px]">
+              <ChartContainer config={profitChartConfig} className="w-full h-[280px]">
                 <LineChart data={analyticsData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => `$${v / 1000}k`} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="profit" stroke="var(--color-chart-2)" strokeWidth={2.5} dot={{ fill: "var(--color-chart-2)", r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="profit" stroke="var(--color-chart-2)" strokeWidth={3} dot={{ r: 5 }} />
                 </LineChart>
               </ChartContainer>
             </CardContent>
           </Card>
         </motion.div>
 
-        <motion.div className="lg:col-span-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="heading-sm flex items-center gap-2">
-                <PieChartIcon className="w-4 h-4 text-steel" />
-                Expense Breakdown
-              </CardTitle>
+              <CardTitle className="heading-sm">{t("analytics.expenseBreakdown")}</CardTitle>
             </CardHeader>
             <CardContent>
-              <ChartContainer config={pieConfig} className="w-full h-[280px]">
+              <ChartContainer config={pieChartConfig} className="w-full h-[280px]">
                 <PieChart>
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Pie
-                    data={expenseBreakdown}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={3}
-                    dataKey="value"
-                    nameKey="name"
-                  >
-                    {expenseBreakdown.map((entry, idx) => (
-                      <Cell key={idx} fill={entry.fill} />
+                  <Pie data={expenseBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, value }) => `${name}: ${value}%`} labelLine={false}>
+                    {expenseBreakdown.map((_entry, index) => (
+                      <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <ChartLegend content={<ChartLegendContent nameKey="name" />} />
                 </PieChart>
               </ChartContainer>
             </CardContent>
@@ -206,65 +181,57 @@ export function AnalyticsPage() {
         </motion.div>
       </div>
 
-      {/* Jobs Completed */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="heading-sm flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-steel" />
-              Jobs Completed per Month
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={jobsConfig} className="w-full h-[260px]">
-              <BarChart data={analyticsData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="jobsCompleted" fill="var(--color-chart-1)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-      </motion.div>
+      {/* Jobs Completed + Financial Summary */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="heading-sm">{t("analytics.jobsCompletedPerMonth")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={jobsChartConfig} className="w-full h-[280px]">
+                <BarChart data={analyticsData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="jobsCompleted" fill="var(--color-chart-1)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-      {/* Summary Table */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="heading-sm">Financial Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {analyticsData.map((d) => (
-                <div key={d.month} className="p-4 rounded-lg bg-muted/50 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold">{d.month}</span>
-                    <Badge variant="secondary" className="text-[10px] bg-steel/10 text-steel">
-                      {d.jobsCompleted} jobs
-                    </Badge>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="heading-sm">{t("analytics.financialSummary")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {analyticsData.map((d) => (
+                  <div key={d.month} className="flex items-center justify-between text-sm">
+                    <span className="font-medium w-10">{d.month}</span>
+                    <div className="flex-1 mx-4">
+                      <div className="flex gap-1 h-5">
+                        <div className="bg-steel/80 rounded-sm" style={{ width: `${(d.revenue / 2000000) * 100}%` }} />
+                        <div className="bg-slate-steel/40 rounded-sm" style={{ width: `${(d.expenses / 2000000) * 100}%` }} />
+                        <div className="bg-hunter/60 rounded-sm" style={{ width: `${(d.profit / 2000000) * 100}%` }} />
+                      </div>
+                    </div>
+                    <span className="text-xs text-muted-foreground w-20 text-right">${(d.profit / 1000).toFixed(0)}k {t("analytics.profit").toLowerCase()}</span>
                   </div>
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Revenue</span>
-                      <span className="font-medium text-steel">${(d.revenue / 1000).toFixed(0)}k</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Expenses</span>
-                      <span className="font-medium text-iron">${(d.expenses / 1000).toFixed(0)}k</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Profit</span>
-                      <span className="font-medium text-hunter">${(d.profit / 1000).toFixed(0)}k</span>
-                    </div>
-                  </div>
+                ))}
+                <div className="flex items-center gap-4 pt-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-steel/80" />{t("analytics.revenue")}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-slate-steel/40" />{t("analytics.expenses")}</span>
+                  <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-hunter/60" />{t("analytics.profit")}</span>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +17,7 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { LogIn, Shield, AlertCircle } from "lucide-react";
 
 export function LoginDialog() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [passcode, setPasscode] = useState("");
@@ -48,7 +50,7 @@ export function LoginDialog() {
           className="bg-steel hover:bg-steel-dark text-white font-semibold px-8 py-6 text-base rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 gap-2"
         >
           <LogIn className="w-5 h-5" />
-          Manager Login
+          {t("login.managerLogin")}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -58,8 +60,8 @@ export function LoginDialog() {
               <Shield className="w-5 h-5 text-steel" />
             </div>
             <div>
-              <DialogTitle className="heading-md text-foreground">Manager Access</DialogTitle>
-              <DialogDescription>Sign in to the MPC-MV management portal</DialogDescription>
+              <DialogTitle className="heading-md text-foreground">{t("login.managerAccess")}</DialogTitle>
+              <DialogDescription>{t("login.signInDescription")}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -67,15 +69,15 @@ export function LoginDialog() {
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription>{t("login.invalidCredentials")}</AlertDescription>
             </Alert>
           )}
           <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
+            <Label htmlFor="email">{t("login.emailAddress")}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="manager@gmail.com"
+              placeholder={t("login.emailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -83,11 +85,11 @@ export function LoginDialog() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="passcode">Passcode</Label>
+            <Label htmlFor="passcode">{t("login.passcode")}</Label>
             <Input
               id="passcode"
               type="password"
-              placeholder="Enter your passcode"
+              placeholder={t("login.passcodePlaceholder")}
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
               required
@@ -98,7 +100,7 @@ export function LoginDialog() {
             type="submit"
             className="w-full h-11 bg-steel hover:bg-steel-dark text-white font-semibold"
           >
-            Sign In
+            {t("login.signIn")}
           </Button>
         </form>
       </DialogContent>

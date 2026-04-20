@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Job, Truck, Employee, Report, ConsultingTopic, ConsultingReply } from "@/types";
+import type { Job, Truck, Employee, Report, ConsultingTopic, ConsultingReply, Meeting } from "@/types";
 import {
   mockJobs,
   mockTrucks,
@@ -7,6 +7,7 @@ import {
   mockReports,
   mockConsultingTopics,
   mockAnalyticsData,
+  mockMeetings,
 } from "@/data/mock-data";
 import type { AnalyticsData } from "@/types";
 
@@ -17,6 +18,7 @@ interface AppState {
   reports: Report[];
   consultingTopics: ConsultingTopic[];
   analyticsData: AnalyticsData[];
+  meetings: Meeting[];
 
   addJob: (job: Job) => void;
   updateJob: (id: string, updates: Partial<Job>) => void;
@@ -31,11 +33,16 @@ interface AppState {
   deleteEmployee: (id: string) => void;
 
   addReport: (report: Report) => void;
+  updateReport: (id: string, updates: Partial<Report>) => void;
   deleteReport: (id: string) => void;
 
   addConsultingTopic: (topic: ConsultingTopic) => void;
   addReply: (topicId: string, reply: ConsultingReply) => void;
   updateTopicStatus: (topicId: string, status: ConsultingTopic["status"]) => void;
+
+  addMeeting: (meeting: Meeting) => void;
+  updateMeeting: (id: string, updates: Partial<Meeting>) => void;
+  deleteMeeting: (id: string) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -45,6 +52,7 @@ export const useAppStore = create<AppState>((set) => ({
   reports: mockReports,
   consultingTopics: mockConsultingTopics,
   analyticsData: mockAnalyticsData,
+  meetings: mockMeetings,
 
   addJob: (job) => set((s) => ({ jobs: [job, ...s.jobs] })),
   updateJob: (id, updates) =>
@@ -62,6 +70,8 @@ export const useAppStore = create<AppState>((set) => ({
   deleteEmployee: (id) => set((s) => ({ employees: s.employees.filter((e) => e.id !== id) })),
 
   addReport: (report) => set((s) => ({ reports: [report, ...s.reports] })),
+  updateReport: (id, updates) =>
+    set((s) => ({ reports: s.reports.map((r) => (r.id === id ? { ...r, ...updates } : r)) })),
   deleteReport: (id) => set((s) => ({ reports: s.reports.filter((r) => r.id !== id) })),
 
   addConsultingTopic: (topic) =>
@@ -78,4 +88,9 @@ export const useAppStore = create<AppState>((set) => ({
         t.id === topicId ? { ...t, status } : t
       ),
     })),
+
+  addMeeting: (meeting) => set((s) => ({ meetings: [meeting, ...s.meetings] })),
+  updateMeeting: (id, updates) =>
+    set((s) => ({ meetings: s.meetings.map((m) => (m.id === id ? { ...m, ...updates } : m)) })),
+  deleteMeeting: (id) => set((s) => ({ meetings: s.meetings.filter((m) => m.id !== id) })),
 }));

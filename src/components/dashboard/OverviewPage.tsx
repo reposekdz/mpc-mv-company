@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,12 +7,14 @@ import { useAppStore } from "@/store/useAppStore";
 import {
   Briefcase,
   Truck,
-  Users,
   DollarSign,
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
   Activity,
+  CalendarDays,
+  Clock,
+  MapPin,
 } from "lucide-react";
 import {
   AreaChart,
@@ -38,7 +41,8 @@ const fadeIn = {
 };
 
 export function OverviewPage() {
-  const { jobs, trucks, employees, analyticsData } = useAppStore();
+  const { t } = useTranslation();
+  const { jobs, trucks, employees, analyticsData, meetings } = useAppStore();
 
   const activeJobs = jobs.filter((j) => j.status === "in_progress").length;
   const availableTrucks = trucks.filter((t) => t.status === "available").length;
@@ -48,19 +52,19 @@ export function OverviewPage() {
 
   const kpis = [
     {
-      title: "Active Jobs",
+      title: t("overview.activeJobs"),
       value: activeJobs.toString(),
-      subtitle: `${jobs.length} total`,
+      subtitle: `${jobs.length} ${t("overview.total")}`,
       icon: Briefcase,
-      trend: "+2 this month",
+      trend: t("overview.thisMonth"),
       trendUp: true,
       color: "text-steel",
       bg: "bg-steel/10",
     },
     {
-      title: "Total Revenue",
+      title: t("overview.totalRevenue"),
       value: `$${(totalRevenue / 1_000_000).toFixed(1)}M`,
-      subtitle: "Last 7 months",
+      subtitle: t("overview.last7Months"),
       icon: DollarSign,
       trend: "+14.2%",
       trendUp: true,
@@ -68,19 +72,19 @@ export function OverviewPage() {
       bg: "bg-hunter/10",
     },
     {
-      title: "Fleet Status",
+      title: t("overview.fleetStatus"),
       value: `${availableTrucks}/${trucks.length}`,
-      subtitle: "Available",
+      subtitle: t("overview.available"),
       icon: Truck,
-      trend: `${trucks.filter((t) => t.status === "maintenance").length} in maintenance`,
+      trend: `${trucks.filter((t) => t.status === "maintenance").length} ${t("overview.inMaintenance")}`,
       trendUp: false,
       color: "text-amber",
       bg: "bg-amber/10",
     },
     {
-      title: "Profit Margin",
+      title: t("overview.profitMargin"),
       value: `${profitMargin}%`,
-      subtitle: `${employees.length} employees`,
+      subtitle: `${employees.length} ${t("overview.employees")}`,
       icon: TrendingUp,
       trend: "+3.1%",
       trendUp: true,
@@ -90,24 +94,43 @@ export function OverviewPage() {
   ];
 
   const revenueChartConfig = {
-    revenue: { label: "Revenue", color: "var(--color-chart-1)" },
-    expenses: { label: "Expenses", color: "var(--color-chart-5)" },
-    profit: { label: "Profit", color: "var(--color-chart-2)" },
+    revenue: { label: t("analytics.revenue"), color: "var(--color-chart-1)" },
+    expenses: { label: t("analytics.expenses"), color: "var(--color-chart-5)" },
+    profit: { label: t("analytics.profit"), color: "var(--color-chart-2)" },
   };
 
   const jobsChartConfig = {
-    jobsCompleted: { label: "Jobs Completed", color: "var(--color-chart-1)" },
+    jobsCompleted: { label: t("overview.jobsCompleted"), color: "var(--color-chart-1)" },
+  };
+
+  const statusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      pending: t("jobs.pending"),
+      in_progress: t("jobs.inProgress"),
+      completed: t("jobs.completed"),
+      on_hold: t("jobs.onHold"),
+      cancelled: t("jobs.cancelled"),
+    };
+    return map[status] || status;
+  };
+
+  const truckStatusLabel = (status: string) => {
+    const map: Record<string, string> = {
+      available: t("trucks.available"),
+      in_use: t("trucks.inUse"),
+      maintenance: t("trucks.maintenance"),
+      out_of_service: t("trucks.outOfService"),
+    };
+    return map[status] || status;
   };
 
   return (
     <div className="space-y-6">
-      {/* Welcome */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h2 className="heading-lg text-foreground">Welcome back, Manager</h2>
-        <p className="text-muted-foreground">Here's your company performance at a glance.</p>
+        <h2 className="heading-lg text-foreground">{t("overview.welcome")}</h2>
+        <p className="text-muted-foreground">{t("overview.subtitle")}</p>
       </motion.div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((kpi, i) => (
           <motion.div key={kpi.title} custom={i} initial="hidden" animate="visible" variants={fadeIn}>
@@ -130,14 +153,13 @@ export function OverviewPage() {
         ))}
       </div>
 
-      {/* Charts Row */}
       <div className="grid lg:grid-cols-7 gap-6">
         <motion.div className="lg:col-span-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="heading-sm flex items-center gap-2">
                 <Activity className="w-4 h-4 text-steel" />
-                Revenue vs Expenses
+                {t("overview.revenueVsExpenses")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -160,7 +182,7 @@ export function OverviewPage() {
             <CardHeader className="pb-2">
               <CardTitle className="heading-sm flex items-center gap-2">
                 <Briefcase className="w-4 h-4 text-steel" />
-                Jobs Completed
+                {t("overview.jobsCompleted")}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -178,11 +200,45 @@ export function OverviewPage() {
         </motion.div>
       </div>
 
-      {/* Recent Jobs & Trucks */}
+      {/* Upcoming Meetings */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.45 }}>
+        <Card>
+          <CardHeader>
+            <CardTitle className="heading-sm flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-steel" />
+              {t("overview.upcomingMeetings")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {meetings
+              .filter((m) => m.status === "scheduled" || m.status === "in_progress")
+              .slice(0, 3)
+              .map((meeting) => (
+                <div key={meeting.id} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
+                  <div className={`w-2 h-2 rounded-full ${meeting.priority === "urgent" ? "bg-iron" : meeting.priority === "important" ? "bg-amber" : "bg-steel"}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate">{meeting.title}</div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{meeting.date} · {meeting.startTime}</span>
+                      <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{meeting.location}</span>
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className={`text-[10px] ${meeting.status === "in_progress" ? "bg-amber/10 text-amber" : "bg-steel/10 text-steel"}`}>
+                    {meeting.status === "in_progress" ? t("meetings.inProgress") : t("meetings.scheduled")}
+                  </Badge>
+                </div>
+              ))}
+            {meetings.filter((m) => m.status === "scheduled" || m.status === "in_progress").length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">{t("overview.noUpcoming")}</p>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
       <div className="grid lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="heading-sm">Active Jobs</CardTitle>
+            <CardTitle className="heading-sm">{t("overview.activeJobsList")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {jobs.filter((j) => j.status === "in_progress").slice(0, 4).map((job) => (
@@ -197,7 +253,7 @@ export function OverviewPage() {
                   <div className="text-[10px] text-muted-foreground text-right mt-0.5">{job.progress}%</div>
                 </div>
                 <Badge variant={job.type === "mining" ? "default" : "secondary"} className="text-[10px]">
-                  {job.type}
+                  {job.type === "mining" ? t("jobs.mining") : t("jobs.construction")}
                 </Badge>
               </div>
             ))}
@@ -206,7 +262,7 @@ export function OverviewPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="heading-sm">Fleet Overview</CardTitle>
+            <CardTitle className="heading-sm">{t("overview.fleetOverview")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {trucks.slice(0, 4).map((truck) => (
@@ -226,7 +282,7 @@ export function OverviewPage() {
                       : "bg-amber/10 text-amber"
                   }`}
                 >
-                  {truck.status.replace("_", " ")}
+                  {truckStatusLabel(truck.status)}
                 </Badge>
               </div>
             ))}

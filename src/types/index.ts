@@ -82,3 +82,22 @@ export interface AnalyticsData {
   profit: number;
   jobsCompleted: number;
 }
+
+export type MeetingStatus = "scheduled" | "in_progress" | "completed" | "cancelled";
+export type MeetingPriority = "normal" | "important" | "urgent";
+
+export interface Meeting {
+  id: string;
+  title: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  organizer: string;
+  attendees: string[];
+  status: MeetingStatus;
+  priority: MeetingPriority;
+  notes: string;
+  agenda: string;
+}

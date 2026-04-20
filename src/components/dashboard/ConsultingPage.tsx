@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,19 +38,6 @@ import {
   User,
 } from "lucide-react";
 
-const statusConfig: Record<ConsultingTopic["status"], { label: string; color: string }> = {
-  open: { label: "Open", color: "bg-steel/10 text-steel" },
-  in_discussion: { label: "In Discussion", color: "bg-amber/10 text-amber" },
-  resolved: { label: "Resolved", color: "bg-hunter/10 text-hunter" },
-};
-
-const categoryConfig: Record<ConsultingTopic["category"], string> = {
-  performance: "bg-amber/10 text-amber",
-  strategy: "bg-steel/10 text-steel",
-  operations: "bg-hunter/10 text-hunter",
-  finance: "bg-iron/10 text-iron",
-};
-
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -60,6 +48,7 @@ function getInitials(name: string) {
 }
 
 export function ConsultingPage() {
+  const { t } = useTranslation();
   const { consultingTopics, addConsultingTopic, addReply, updateTopicStatus } = useAppStore();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -67,11 +56,24 @@ export function ConsultingPage() {
   const [selectedTopic, setSelectedTopic] = useState<ConsultingTopic | null>(null);
   const [replyText, setReplyText] = useState("");
 
-  const filtered = consultingTopics.filter((t) => {
+  const statusConfig: Record<ConsultingTopic["status"], { label: string; color: string }> = {
+    open: { label: t("consulting.open"), color: "bg-steel/10 text-steel" },
+    in_discussion: { label: t("consulting.inDiscussion"), color: "bg-amber/10 text-amber" },
+    resolved: { label: t("consulting.resolved"), color: "bg-hunter/10 text-hunter" },
+  };
+
+  const categoryConfig: Record<ConsultingTopic["category"], { label: string; color: string }> = {
+    performance: { label: t("consulting.performanceCategory"), color: "bg-amber/10 text-amber" },
+    strategy: { label: t("consulting.strategyCategory"), color: "bg-steel/10 text-steel" },
+    operations: { label: t("consulting.operationsCategory"), color: "bg-hunter/10 text-hunter" },
+    finance: { label: t("consulting.financeCategory"), color: "bg-iron/10 text-iron" },
+  };
+
+  const filtered = consultingTopics.filter((topic) => {
     const matchesSearch =
-      t.title.toLowerCase().includes(search.toLowerCase()) ||
-      t.author.toLowerCase().includes(search.toLowerCase());
-    const matchesCat = categoryFilter === "all" || t.category === categoryFilter;
+      topic.title.toLowerCase().includes(search.toLowerCase()) ||
+      topic.author.toLowerCase().includes(search.toLowerCase());
+    const matchesCat = categoryFilter === "all" || topic.category === categoryFilter;
     return matchesSearch && matchesCat;
   });
 
@@ -102,16 +104,14 @@ export function ConsultingPage() {
     };
     addReply(selectedTopic.id, newReply);
     setReplyText("");
-    // Refresh the selected topic reference
     setSelectedTopic((prev) => {
       if (!prev) return null;
       return { ...prev, replies: [...prev.replies, newReply] };
     });
   };
 
-  // Keep selectedTopic in sync with store
   const activeTopic = selectedTopic
-    ? consultingTopics.find((t) => t.id === selectedTopic.id) || selectedTopic
+    ? consultingTopics.find((topic) => topic.id === selectedTopic.id) || selectedTopic
     : null;
 
   return (
@@ -122,7 +122,7 @@ export function ConsultingPage() {
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search topics..."
+              placeholder={t("consulting.searchTopics")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9"
@@ -131,14 +131,14 @@ export function ConsultingPage() {
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger className="w-40">
               <Filter className="w-3.5 h-3.5 mr-2" />
-              <SelectValue placeholder="Category" />
+              <SelectValue placeholder={t("consulting.category")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="performance">Performance</SelectItem>
-              <SelectItem value="strategy">Strategy</SelectItem>
-              <SelectItem value="operations">Operations</SelectItem>
-              <SelectItem value="finance">Finance</SelectItem>
+              <SelectItem value="all">{t("consulting.allCategories")}</SelectItem>
+              <SelectItem value="performance">{t("consulting.performanceCategory")}</SelectItem>
+              <SelectItem value="strategy">{t("consulting.strategyCategory")}</SelectItem>
+              <SelectItem value="operations">{t("consulting.operationsCategory")}</SelectItem>
+              <SelectItem value="finance">{t("consulting.financeCategory")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -146,43 +146,43 @@ export function ConsultingPage() {
           <DialogTrigger asChild>
             <Button className="bg-steel hover:bg-steel-dark gap-2">
               <Plus className="w-4 h-4" />
-              New Discussion
+              {t("consulting.newDiscussion")}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle className="heading-md">New Discussion</DialogTitle>
+              <DialogTitle className="heading-md">{t("consulting.newDiscussion")}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleAdd} className="space-y-4">
               <div className="space-y-4">
                 <div>
-                  <Label>Topic Title</Label>
+                  <Label>{t("consulting.topicTitle")}</Label>
                   <Input name="title" required />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Category</Label>
+                    <Label>{t("consulting.category")}</Label>
                     <Select name="category" defaultValue="operations">
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="performance">Performance</SelectItem>
-                        <SelectItem value="strategy">Strategy</SelectItem>
-                        <SelectItem value="operations">Operations</SelectItem>
-                        <SelectItem value="finance">Finance</SelectItem>
+                        <SelectItem value="performance">{t("consulting.performanceCategory")}</SelectItem>
+                        <SelectItem value="strategy">{t("consulting.strategyCategory")}</SelectItem>
+                        <SelectItem value="operations">{t("consulting.operationsCategory")}</SelectItem>
+                        <SelectItem value="finance">{t("consulting.financeCategory")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label>Author</Label>
+                    <Label>{t("consulting.author")}</Label>
                     <Input name="author" required />
                   </div>
                 </div>
                 <div>
-                  <Label>Description</Label>
+                  <Label>{t("consulting.descriptionLabel")}</Label>
                   <Textarea name="description" rows={3} required />
                 </div>
               </div>
-              <Button type="submit" className="w-full bg-steel hover:bg-steel-dark">Create Topic</Button>
+              <Button type="submit" className="w-full bg-steel hover:bg-steel-dark">{t("consulting.createTopic")}</Button>
             </form>
           </DialogContent>
         </Dialog>
@@ -220,8 +220,8 @@ export function ConsultingPage() {
                         <span className="flex items-center gap-1">
                           <User className="w-3 h-3" />{topic.author}
                         </span>
-                        <Badge variant="secondary" className={`text-[9px] ${categoryConfig[topic.category]}`}>
-                          {topic.category}
+                        <Badge variant="secondary" className={`text-[9px] ${categoryConfig[topic.category].color}`}>
+                          {categoryConfig[topic.category].label}
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2">
@@ -241,7 +241,7 @@ export function ConsultingPage() {
           {filtered.length === 0 && (
             <div className="text-center text-muted-foreground py-16">
               <MessageSquare className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p>No topics found.</p>
+              <p>{t("consulting.noTopicsFound")}</p>
             </div>
           )}
         </div>
@@ -259,10 +259,10 @@ export function ConsultingPage() {
                         <Badge variant="secondary" className={`text-[10px] ${statusConfig[activeTopic.status].color}`}>
                           {statusConfig[activeTopic.status].label}
                         </Badge>
-                        <Badge variant="secondary" className={`text-[10px] ${categoryConfig[activeTopic.category]}`}>
-                          {activeTopic.category}
+                        <Badge variant="secondary" className={`text-[10px] ${categoryConfig[activeTopic.category].color}`}>
+                          {categoryConfig[activeTopic.category].label}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">by {activeTopic.author} · {activeTopic.date}</span>
+                        <span className="text-xs text-muted-foreground">{t("consulting.by")} {activeTopic.author} · {activeTopic.date}</span>
                       </div>
                     </div>
                     <div className="flex gap-2">
@@ -274,7 +274,7 @@ export function ConsultingPage() {
                           onClick={() => updateTopicStatus(activeTopic.id, "resolved")}
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
-                          Resolve
+                          {t("consulting.resolve")}
                         </Button>
                       ) : (
                         <Button
@@ -284,7 +284,7 @@ export function ConsultingPage() {
                           onClick={() => updateTopicStatus(activeTopic.id, "open")}
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
-                          Reopen
+                          {t("consulting.reopen")}
                         </Button>
                       )}
                     </div>
@@ -301,7 +301,9 @@ export function ConsultingPage() {
                   {/* Replies */}
                   <div>
                     <h4 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">
-                      {activeTopic.replies.length} {activeTopic.replies.length === 1 ? "Reply" : "Replies"}
+                      {activeTopic.replies.length === 1
+                        ? t("consulting.repliesCount", { count: activeTopic.replies.length })
+                        : t("consulting.repliesCount_plural", { count: activeTopic.replies.length })}
                     </h4>
                     <ScrollArea className={activeTopic.replies.length > 3 ? "h-[280px]" : ""}>
                       <div className="space-y-3 pr-3">
@@ -322,7 +324,7 @@ export function ConsultingPage() {
                           </div>
                         ))}
                         {activeTopic.replies.length === 0 && (
-                          <p className="text-xs text-muted-foreground text-center py-6">No replies yet. Be the first to respond.</p>
+                          <p className="text-xs text-muted-foreground text-center py-6">{t("consulting.noReplies")}</p>
                         )}
                       </div>
                     </ScrollArea>
@@ -331,7 +333,7 @@ export function ConsultingPage() {
                   {/* Reply Input */}
                   <div className="flex gap-3 pt-2">
                     <Textarea
-                      placeholder="Write a reply..."
+                      placeholder={t("consulting.writeReply")}
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
                       className="flex-1 min-h-[80px] resize-none"
@@ -347,7 +349,7 @@ export function ConsultingPage() {
                       disabled={!replyText.trim()}
                     >
                       <Send className="w-4 h-4" />
-                      Reply
+                      {t("consulting.reply")}
                     </Button>
                   </div>
                 </CardContent>
@@ -357,8 +359,8 @@ export function ConsultingPage() {
             <Card className="h-full min-h-[400px] flex items-center justify-center">
               <CardContent className="text-center">
                 <MessageSquare className="w-12 h-12 mx-auto mb-4 text-muted-foreground/30" />
-                <h3 className="heading-sm text-muted-foreground mb-1">Select a Topic</h3>
-                <p className="text-sm text-muted-foreground/70">Choose a discussion from the list to view details and replies.</p>
+                <h3 className="heading-sm text-muted-foreground mb-1">{t("consulting.selectTopic")}</h3>
+                <p className="text-sm text-muted-foreground/70">{t("consulting.selectTopicDescription")}</p>
               </CardContent>
             </Card>
           )}
