@@ -1,8 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
+import { useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/useAppStore";
 import {
   Briefcase,
@@ -15,6 +18,7 @@ import {
   CalendarDays,
   Clock,
   MapPin,
+  AlertCircle,
 } from "lucide-react";
 import {
   AreaChart,
@@ -42,7 +46,11 @@ const fadeIn = {
 
 export function OverviewPage() {
   const { t } = useTranslation();
-  const { jobs, trucks, employees, analyticsData, meetings } = useAppStore();
+  const { jobs, trucks, employees, analyticsData, meetings, fetchAllData, loading, clearError, error } = useAppStore();
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
 
   const activeJobs = jobs.filter((j) => j.status === "in_progress").length;
   const availableTrucks = trucks.filter((t) => t.status === "available").length;
@@ -124,11 +132,47 @@ export function OverviewPage() {
     return map[status] || status;
   };
 
+  if (loading.jobs || loading.trucks || loading.employees) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="p-5">
+                <Skeleton className="w-10 h-10 rounded-lg mb-3" />
+                <Skeleton className="h-8 w-24 mb-1" />
+                <Skeleton className="h-3 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="grid lg:grid-cols-7 gap-6">
+          <Card className="lg:col-span-4 animate-pulse">
+            <CardContent className="h-[320px]" />
+          </Card>
+          <Card className="lg:col-span-3 animate-pulse">
+            <CardContent className="h-[320px]" />
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
-        <h2 className="heading-lg text-foreground">{t("overview.welcome")}</h2>
-        <p className="text-muted-foreground">{t("overview.subtitle")}</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="heading-lg text-foreground">{t("overview.welcome")}</h2>
+            <p className="text-muted-foreground">{t("overview.subtitle")}</p>
+          </div>
+          {error && (
+            <Button variant="destructive" size="sm" className="gap-2" onClick={fetchAllData}>
+              <AlertCircle className="w-4 h-4" />
+              Ongera Ugerageze
+            </Button>
+          )}
+        </div>
       </motion.div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

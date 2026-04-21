@@ -24,9 +24,9 @@ export function LoginDialog() {
   const { login, error, clearError } = useAuthStore();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = login(email, passcode);
+    const success = await login(email, passcode);
     if (success) {
       setOpen(false);
       navigate("/dashboard");
@@ -43,16 +43,18 @@ export function LoginDialog() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button
-          size="lg"
-          className="bg-steel hover:bg-steel-dark text-white font-semibold px-8 py-6 text-base rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 gap-2"
-        >
-          <LogIn className="w-5 h-5" />
-          {t("login.managerLogin")}
-        </Button>
-      </DialogTrigger>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger
+        render={
+          <Button
+            size="lg"
+            className="bg-steel hover:bg-steel-dark text-white font-semibold px-8 py-6 text-base rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 gap-2"
+          >
+            <LogIn className="w-5 h-5" />
+            {t("login.managerLogin")}
+          </Button>
+        }
+      />
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">

@@ -3,6 +3,18 @@ export type JobPriority = "low" | "medium" | "high" | "critical";
 export type TruckStatus = "available" | "in_use" | "maintenance" | "out_of_service";
 export type PaymentStatus = "paid" | "pending" | "overdue";
 
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: "admin" | "manager" | "viewer";
+  phone?: string;
+  department?: string;
+  avatar?: string;
+  last_login?: string;
+  created_at: string;
+}
+
 export interface Job {
   id: string;
   title: string;
