@@ -26,7 +26,7 @@ const getAllReports = async (req, res, next) => {
     query += ' ORDER BY date DESC, created_at DESC';
 
     const [reports] = await pool.query(query, params);
-    res.json({ reports, count: reports.length });
+    res.json(reports);
   } catch (error) {
     next(error);
   }
@@ -41,7 +41,7 @@ const getReportById = async (req, res, next) => {
       return res.status(404).json({ error: 'Report not found' });
     }
 
-    res.json({ report: reports[0] });
+    res.json(reports[0]);
   } catch (error) {
     next(error);
   }

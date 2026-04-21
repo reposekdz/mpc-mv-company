@@ -5,10 +5,10 @@ const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Protected endpoints
 router.use(authenticateToken);
-
-router.get('/', analyticsController.getAnalyticsData);
 router.get('/dashboard', analyticsController.getDashboardStats);
+router.get('/', analyticsController.getAnalyticsData);
 router.get('/trends', analyticsController.getMonthlyTrends);
 
 router.post('/',

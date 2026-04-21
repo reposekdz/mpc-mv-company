@@ -30,6 +30,7 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from "@/components/ui/chart";
+import { formatCurrency } from "@/lib/utils";
 
 const fadeIn = {
   hidden: { opacity: 0, y: 15 },
@@ -53,9 +54,9 @@ export function AnalyticsPage() {
   const profitMargin = ((totalProfit / totalRevenue) * 100).toFixed(1);
 
   const kpis = [
-    { title: t("analytics.totalRevenue"), value: `$${(totalRevenue / 1_000_000).toFixed(2)}M`, trend: "+14.2%", trendUp: true, icon: DollarSign, color: "text-steel", bg: "bg-steel/10" },
-    { title: t("analytics.totalExpenses"), value: `$${(totalExpenses / 1_000_000).toFixed(2)}M`, trend: "+8.7%", trendUp: false, icon: TrendingDown, color: "text-iron", bg: "bg-iron/10" },
-    { title: t("analytics.netProfit"), value: `$${(totalProfit / 1_000_000).toFixed(2)}M`, trend: `${profitMargin}% ${t("analytics.margin")}`, trendUp: true, icon: TrendingUp, color: "text-hunter", bg: "bg-hunter/10" },
+    { title: t("analytics.totalRevenue"), value: formatCurrency(totalRevenue), trend: "+14.2%", trendUp: true, icon: DollarSign, color: "text-steel", bg: "bg-steel/10" },
+    { title: t("analytics.totalExpenses"), value: formatCurrency(totalExpenses), trend: "+8.7%", trendUp: false, icon: TrendingDown, color: "text-iron", bg: "bg-iron/10" },
+    { title: t("analytics.netProfit"), value: formatCurrency(totalProfit), trend: `${profitMargin}% ${t("analytics.margin")}`, trendUp: true, icon: TrendingUp, color: "text-hunter", bg: "bg-hunter/10" },
     { title: t("analytics.jobsCompleted"), value: totalJobsDone.toString(), trend: `${totalJobsDone} ${t("analytics.jobs")}`, trendUp: true, icon: Briefcase, color: "text-amber", bg: "bg-amber/10" },
   ];
 
@@ -127,7 +128,7 @@ export function AnalyticsPage() {
               <AreaChart data={analyticsData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => `$${v / 1000}k`} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => formatCurrency(v)} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <ChartLegend content={<ChartLegendContent />} />
                 <Area type="monotone" dataKey="revenue" stroke="var(--color-chart-1)" fill="var(--color-chart-1)" fillOpacity={0.15} strokeWidth={2} />
@@ -151,7 +152,7 @@ export function AnalyticsPage() {
                 <LineChart data={analyticsData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => `$${v / 1000}k`} />
+                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => formatCurrency(v)} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line type="monotone" dataKey="profit" stroke="var(--color-chart-2)" strokeWidth={3} dot={{ r: 5 }} />
                 </LineChart>

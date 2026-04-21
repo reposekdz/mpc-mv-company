@@ -26,7 +26,7 @@ const getAllEmployees = async (req, res, next) => {
     query += ' ORDER BY created_at DESC';
 
     const [employees] = await pool.query(query, params);
-    res.json({ employees, count: employees.length });
+    res.json(employees);
   } catch (error) {
     next(error);
   }
@@ -41,7 +41,7 @@ const getEmployeeById = async (req, res, next) => {
       return res.status(404).json({ error: 'Employee not found' });
     }
 
-    res.json({ employee: employees[0] });
+    res.json(employees[0]);
   } catch (error) {
     next(error);
   }

@@ -37,7 +37,6 @@ import {
   BarChart3,
   MessageSquare,
   LogOut,
-  Mountain,
   ChevronUp,
   User,
   CalendarDays,
@@ -68,17 +67,15 @@ export function DashboardLayout() {
   return (
     <SidebarProvider>
       <Sidebar className="border-r-0">
-        <SidebarHeader className="p-4">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-steel flex items-center justify-center">
-              <Mountain className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="heading-sm text-sidebar-foreground leading-tight">MPC-MV</div>
-              <div className="text-[11px] text-sidebar-foreground/50">{t("nav.managementPortal")}</div>
-            </div>
-          </div>
-        </SidebarHeader>
+         <SidebarHeader className="p-4">
+           <div className="flex items-center gap-2.5">
+             <img src="/logo.png" alt="MPC-MV" className="w-9 h-9 rounded-lg" />
+             <div>
+               <div className="heading-sm text-sidebar-foreground leading-tight">MPC-MV</div>
+               <div className="text-[11px] text-sidebar-foreground/50">{t("nav.managementPortal")}</div>
+             </div>
+           </div>
+         </SidebarHeader>
         <SidebarSeparator />
         <SidebarContent>
           <SidebarGroup>

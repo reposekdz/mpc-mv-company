@@ -179,23 +179,16 @@ export const meetingsApi = {
 // Analytics API
 export const analyticsApi = {
   getAll: () => api.get('/analytics'),
-  getDashboard: async () => {
-    try {
-      return await api.get('/analytics/dashboard');
-    } catch {
-      // Fallback mock data when backend is down
-      return {
-        activeJobs: 24,
-        totalTrucks: 52,
-        totalEmployees: 187,
-        totalRevenue: 38700000,
-        totalReports: 15,
-        upcomingMeetings: 8,
-        profitMargin: 18.2,
-        fleetUtilization: 85,
-      };
-    }
-  },
+  getDashboard: () => api.get('/analytics/dashboard'),
   getTrends: () => api.get('/analytics/trends'),
   create: (data: unknown) => api.post('/analytics', data),
+};
+
+// Contact API
+export const contactApi = {
+  submit: (data: { name: string; email: string; phone?: string; serviceType?: string; subject: string; message: string }) =>
+    api.post('/contact', data),
+  getAll: () => api.get('/contact'),
+  markAsRead: (id: string) => api.put(`/contact/${id}/read`),
+  delete: (id: string) => api.delete(`/contact/${id}`),
 };

@@ -50,6 +50,7 @@ import {
   AlertTriangle,
   Filter,
 } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 const fadeIn = {
   hidden: { opacity: 0, y: 15 },
@@ -90,7 +91,7 @@ export function SalariesPage() {
   const overdueCount = employees.filter((e) => e.paymentStatus === "overdue").length;
 
   const kpis = [
-    { title: t("salaries.totalPayroll"), value: `$${totalPayroll.toLocaleString()}`, icon: DollarSign, color: "text-steel", bg: "bg-steel/10" },
+    { title: t("salaries.totalPayroll"), value: formatCurrency(totalPayroll), icon: DollarSign, color: "text-steel", bg: "bg-steel/10" },
     { title: t("salaries.employeeCount"), value: employees.length.toString(), icon: Users, color: "text-hunter", bg: "bg-hunter/10" },
     { title: t("salaries.paid"), value: paidCount.toString(), icon: CheckCircle, color: "text-hunter", bg: "bg-hunter/10" },
     { title: t("salaries.pendingOverdue"), value: `${pendingCount} / ${overdueCount}`, icon: AlertTriangle, color: "text-amber", bg: "bg-amber/10" },
@@ -208,15 +209,15 @@ export function SalariesPage() {
                   <Input name="department" required />
                 </div>
                 <div>
-                  <Label>{t("salaries.baseSalary")} ($)</Label>
+                  <Label>{t("salaries.baseSalary")} (RWF)</Label>
                   <Input name="baseSalary" type="number" required />
                 </div>
                 <div>
-                  <Label>{t("salaries.deductions")} ($)</Label>
+                  <Label>{t("salaries.deductions")} (RWF)</Label>
                   <Input name="deductions" type="number" defaultValue={0} />
                 </div>
                 <div>
-                  <Label>{t("salaries.bonuses")} ($)</Label>
+                  <Label>{t("salaries.bonuses")} (RWF)</Label>
                   <Input name="bonuses" type="number" defaultValue={0} />
                 </div>
                 <div>
@@ -270,10 +271,10 @@ export function SalariesPage() {
                       <TableCell>
                         <Badge variant="secondary" className="text-[10px]">{emp.department}</Badge>
                       </TableCell>
-                      <TableCell className="text-right text-sm">${emp.baseSalary.toLocaleString()}</TableCell>
-                      <TableCell className="text-right text-sm text-iron">-${emp.deductions.toLocaleString()}</TableCell>
-                      <TableCell className="text-right text-sm text-hunter">+${emp.bonuses.toLocaleString()}</TableCell>
-                      <TableCell className="text-right text-sm font-semibold">${emp.netPay.toLocaleString()}</TableCell>
+                      <TableCell className="text-right text-sm">{formatCurrency(emp.baseSalary)}</TableCell>
+                      <TableCell className="text-right text-sm text-iron">-{formatCurrency(emp.deductions)}</TableCell>
+                      <TableCell className="text-right text-sm text-hunter">+{formatCurrency(emp.bonuses)}</TableCell>
+                      <TableCell className="text-right text-sm font-semibold">{formatCurrency(emp.netPay)}</TableCell>
                       <TableCell>
                         <Badge variant="secondary" className={`text-[10px] ${statusCfg.color}`}>
                           {statusCfg.label}
@@ -341,15 +342,15 @@ export function SalariesPage() {
                   <Input name="department" defaultValue={editEmp.department} required />
                 </div>
                 <div>
-                  <Label>{t("salaries.baseSalary")} ($)</Label>
+                  <Label>{t("salaries.baseSalary")} (RWF)</Label>
                   <Input name="baseSalary" type="number" defaultValue={editEmp.baseSalary} required />
                 </div>
                 <div>
-                  <Label>{t("salaries.deductions")} ($)</Label>
+                  <Label>{t("salaries.deductions")} (RWF)</Label>
                   <Input name="deductions" type="number" defaultValue={editEmp.deductions} />
                 </div>
                 <div>
-                  <Label>{t("salaries.bonuses")} ($)</Label>
+                  <Label>{t("salaries.bonuses")} (RWF)</Label>
                   <Input name="bonuses" type="number" defaultValue={editEmp.bonuses} />
                 </div>
                 <div>

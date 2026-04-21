@@ -26,7 +26,7 @@ const getAllTopics = async (req, res, next) => {
     query += ' ORDER BY date DESC, created_at DESC';
 
     const [topics] = await pool.query(query, params);
-    res.json({ topics, count: topics.length });
+    res.json(topics);
   } catch (error) {
     next(error);
   }
@@ -46,7 +46,7 @@ const getTopicById = async (req, res, next) => {
       [id]
     );
 
-    res.json({ topic: topics[0], replies });
+    res.json({ ...topics[0], replies });
   } catch (error) {
     next(error);
   }

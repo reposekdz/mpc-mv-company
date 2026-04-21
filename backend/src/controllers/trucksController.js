@@ -21,7 +21,7 @@ const getAllTrucks = async (req, res, next) => {
     query += ' ORDER BY created_at DESC';
 
     const [trucks] = await pool.query(query, params);
-    res.json({ trucks, count: trucks.length });
+    res.json(trucks);
   } catch (error) {
     next(error);
   }
@@ -36,7 +36,7 @@ const getTruckById = async (req, res, next) => {
       return res.status(404).json({ error: 'Truck not found' });
     }
 
-    res.json({ truck: trucks[0] });
+    res.json(trucks[0]);
   } catch (error) {
     next(error);
   }
@@ -76,7 +76,7 @@ const createTruck = async (req, res, next) => {
     );
 
     const [newTruck] = await pool.query('SELECT * FROM trucks WHERE id = ?', [id]);
-    res.status(201).json({ truck: newTruck[0], message: 'Truck created successfully' });
+    res.status(201).json(newTruck[0]);
   } catch (error) {
     next(error);
   }
@@ -131,7 +131,7 @@ const updateTruck = async (req, res, next) => {
     );
 
     const [updatedTruck] = await pool.query('SELECT * FROM trucks WHERE id = ?', [id]);
-    res.json({ truck: updatedTruck[0], message: 'Truck updated successfully' });
+    res.json(updatedTruck[0]);
   } catch (error) {
     next(error);
   }

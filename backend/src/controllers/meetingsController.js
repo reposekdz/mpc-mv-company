@@ -37,7 +37,7 @@ const getAllMeetings = async (req, res, next) => {
       attendees: JSON.parse(meeting.attendees || '[]')
     }));
 
-    res.json({ meetings: parsedMeetings, count: parsedMeetings.length });
+    res.json(parsedMeetings);
   } catch (error) {
     next(error);
   }
@@ -57,7 +57,7 @@ const getMeetingById = async (req, res, next) => {
       attendees: JSON.parse(meetings[0].attendees || '[]')
     };
 
-    res.json({ meeting });
+    res.json(meeting);
   } catch (error) {
     next(error);
   }

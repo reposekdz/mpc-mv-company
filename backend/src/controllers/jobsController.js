@@ -26,7 +26,7 @@ const getAllJobs = async (req, res, next) => {
     query += ' ORDER BY created_at DESC';
 
     const [jobs] = await pool.query(query, params);
-    res.json({ jobs, count: jobs.length });
+    res.json(jobs);
   } catch (error) {
     next(error);
   }
@@ -41,7 +41,7 @@ const getJobById = async (req, res, next) => {
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    res.json({ job: jobs[0] });
+    res.json(jobs[0]);
   } catch (error) {
     next(error);
   }
@@ -81,7 +81,7 @@ const createJob = async (req, res, next) => {
     );
 
     const [newJob] = await pool.query('SELECT * FROM jobs WHERE id = ?', [id]);
-    res.status(201).json({ job: newJob[0], message: 'Job created successfully' });
+    res.status(201).json(newJob[0]);
   } catch (error) {
     next(error);
   }
@@ -136,7 +136,7 @@ const updateJob = async (req, res, next) => {
     );
 
     const [updatedJob] = await pool.query('SELECT * FROM jobs WHERE id = ?', [id]);
-    res.json({ job: updatedJob[0], message: 'Job updated successfully' });
+    res.json(updatedJob[0]);
   } catch (error) {
     next(error);
   }

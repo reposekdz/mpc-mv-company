@@ -7,7 +7,7 @@ const getAnalyticsData = async (req, res, next) => {
       ORDER BY created_at ASC
     `);
 
-    res.json({ analytics });
+    res.json(analytics);
   } catch (error) {
     next(error);
   }
@@ -90,7 +90,7 @@ const getMonthlyTrends = async (req, res, next) => {
       ORDER BY created_at ASC
     `);
 
-    res.json({ trends });
+    res.json(trends);
   } catch (error) {
     next(error);
   }

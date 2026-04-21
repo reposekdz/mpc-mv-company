@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import type { Job, Truck, Employee, Report, ConsultingTopic, ConsultingReply, Meeting } from "@/types";
-import type { AnalyticsData } from "@/types";
+import type { Job, Truck, Employee, Report, ConsultingTopic, ConsultingReply, Meeting, ContactMessage } from "@/types";
+import type { AnalyticsData, DashboardStats } from "@/types";
 import {
   jobsApi,
   trucksApi,
@@ -8,7 +8,8 @@ import {
   reportsApi,
   consultingApi,
   meetingsApi,
-  analyticsApi
+  analyticsApi,
+  contactApi
 } from "@/lib/api";
 
 interface LoadingState {
@@ -30,6 +31,7 @@ interface AppState {
   consultingTopics: ConsultingTopic[];
   analyticsData: AnalyticsData[];
   meetings: Meeting[];
+  contactMessages: ContactMessage[];
   loading: LoadingState;
   error: string | null;
 
@@ -88,6 +90,7 @@ const createLoadingState = (): LoadingState => ({
   consultingTopics: false,
   analyticsData: false,
   meetings: false,
+  contactMessages: false,
 });
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -98,6 +101,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   consultingTopics: [],
   analyticsData: [],
   meetings: [],
+  contactMessages: [],
   loading: createLoadingState(),
   error: null,
 
@@ -457,6 +461,50 @@ export const useAppStore = create<AppState>((set, get) => ({
     return await analyticsApi.getTrends();
   },
 
+  // Contact Messages
+  fetchContactMessages: async () => {
+    set({ loading: { ...get().loading, contactMessages: true }, error: null });
+    try {
+      const messages = await contactApi.getAll();
+      set({ contactMessages: messages });
+    } catch (error: any) {
+      set({ error: error.message });
+    } finally {
+      set({ loading: { ...get().loading, contactMessages: false } });
+    }
+  },
+  markMessageAsRead: async (id: string) => {
+    set({ loading: { ...get().loading, contactMessages: true }, error: null });
+    try {
+      const updated = await contactApi.markAsRead(id);
+      set({
+        contactMessages: get().contactMessages.map(m =>
+          m.id === id ? updated : m
+        )
+      });
+      return updated;
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    } finally {
+      set({ loading: { ...get().loading, contactMessages: false } });
+    }
+  },
+  deleteMessage: async (id: string) => {
+    set({ loading: { ...get().loading, contactMessages: true }, error: null });
+    try {
+      await contactApi.delete(id);
+      set({
+        contactMessages: get().contactMessages.filter(m => m.id !== id)
+      });
+    } catch (error: any) {
+      set({ error: error.message });
+      throw error;
+    } finally {
+      set({ loading: { ...get().loading, contactMessages: false } });
+    }
+  },
+
   // UTILS
   clearError: () => set({ error: null }),
   fetchAllData: async () => {
@@ -468,6 +516,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().fetchConsultingTopics(),
       get().fetchMeetings(),
       get().fetchAnalyticsData(),
+      get().fetchContactMessages(),
     ]);
   }
 }));

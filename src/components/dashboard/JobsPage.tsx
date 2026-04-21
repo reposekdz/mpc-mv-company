@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAppStore } from "@/store/useAppStore";
 import type { Job, JobStatus, JobPriority } from "@/types";
+import { formatCurrency } from "@/lib/utils";
 import {
   Plus,
   Search,
@@ -283,7 +284,7 @@ export function JobsPage() {
                         <span className="text-[10px] text-muted-foreground">{job.progress}%</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm">${job.budget.toLocaleString()}</TableCell>
+                    <TableCell className="text-sm">{formatCurrency(job.budget)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

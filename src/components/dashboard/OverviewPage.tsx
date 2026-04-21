@@ -34,6 +34,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+import { formatCurrency } from "@/lib/utils";
 
 const fadeIn = {
   hidden: { opacity: 0, y: 15 },
@@ -56,7 +57,7 @@ export function OverviewPage() {
   const availableTrucks = trucks.filter((t) => t.status === "available").length;
   const totalRevenue = analyticsData.reduce((s, d) => s + d.revenue, 0);
   const totalProfit = analyticsData.reduce((s, d) => s + d.profit, 0);
-  const profitMargin = ((totalProfit / totalRevenue) * 100).toFixed(1);
+  const profitMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100).toFixed(1) : "0.0";
 
   const kpis = [
     {
@@ -71,7 +72,7 @@ export function OverviewPage() {
     },
     {
       title: t("overview.totalRevenue"),
-      value: `$${(totalRevenue / 1_000_000).toFixed(1)}M`,
+      value: formatCurrency(totalRevenue),
       subtitle: t("overview.last7Months"),
       icon: DollarSign,
       trend: "+14.2%",
@@ -211,7 +212,7 @@ export function OverviewPage() {
                 <AreaChart data={analyticsData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => `$${v / 1000}k`} />
+                   <YAxis tick={{ fontSize: 12 }} tickFormatter={(v: number) => formatCurrency(v)} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Area type="monotone" dataKey="revenue" stroke="var(--color-chart-1)" fill="var(--color-chart-1)" fillOpacity={0.15} strokeWidth={2} />
                   <Area type="monotone" dataKey="expenses" stroke="var(--color-chart-5)" fill="var(--color-chart-5)" fillOpacity={0.1} strokeWidth={2} />
