@@ -68,12 +68,12 @@ export function LoginDialog() {
           </div>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{t("login.invalidCredentials")}</AlertDescription>
-            </Alert>
-          )}
+           {error && (
+             <Alert variant="destructive">
+               <AlertCircle className="h-4 w-4" />
+               <AlertDescription>{error}</AlertDescription>
+             </Alert>
+           )}
           <div className="space-y-2">
             <Label htmlFor="email">{t("login.emailAddress")}</Label>
             <Input
