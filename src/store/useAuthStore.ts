@@ -8,10 +8,12 @@ interface AuthState {
   refreshToken: string | null;
   loading: boolean;
   error: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; role?: string }>;
   logout: () => void;
-  fetchCurrentUser: () => Promise<void>;
+  fetchCurrentUser: () => Promise<boolean>;
   clearError: () => void;
+  isManager: () => boolean;
+  isAdmin: () => boolean;
 }
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
@@ -24,7 +26,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loading: false,
   error: null,
 
-  login: async (email: string, password: string): Promise<boolean> => {
+  login: async (email: string, password: string): Promise<{ success: boolean; role?: string }> => {
     set({ loading: true, error: null });
     try {
       const response = await fetch(`${API_BASE}/auth/login`, {
@@ -37,7 +39,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (!response.ok) {
         set({ error: data.message || data.error || "Login failed", loading: false });
-        return false;
+        return { success: false };
+      }
+
+      // Verify user has manager/admin role
+      if (!['manager', 'admin'].includes(data.user.role)) {
+        set({ error: "Access denied. Only managers and admins can access this dashboard.", loading: false });
+        return { success: false };
       }
 
       localStorage.setItem("accessToken", data.accessToken);
@@ -52,10 +60,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         error: null,
       });
 
-      return true;
+      return { success: true, role: data.user.role };
     } catch (error) {
       set({ error: "Network error. Please try again.", loading: false });
-      return false;
+      return { success: false };
     }
   },
 
@@ -71,9 +79,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     });
   },
 
-  fetchCurrentUser: async () => {
+  fetchCurrentUser: async (): Promise<boolean> => {
     const { accessToken } = get();
-    if (!accessToken) return;
+    if (!accessToken) return false;
 
     try {
       const response = await fetch(`${API_BASE}/auth/me`, {
@@ -82,16 +90,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       if (response.ok) {
         const data = await response.json();
+        // Verify role on fetch
+        if (!['manager', 'admin'].includes(data.user.role)) {
+          get().logout();
+          return false;
+        }
         set({ user: data.user });
+        return true;
       } else {
         get().logout();
+        return false;
       }
     } catch {
-      // Silent fail - will retry on next load
+      return false;
     }
   },
 
   clearError: () => set({ error: null }),
+  
+  isManager: () => {
+    const user = get().user;
+    return user?.role === 'manager' || user?.role === 'admin';
+  },
+  
+  isAdmin: () => {
+    const user = get().user;
+    return user?.role === 'admin';
+  },
 }));
 
 // Initialize user data on store load

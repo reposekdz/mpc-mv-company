@@ -46,7 +46,7 @@ export function DashboardLayout() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuthStore();
+  const { logout, user } = useAuthStore();
 
   const navItems = [
     { title: t("nav.overview"), path: "/dashboard", icon: LayoutDashboard },
@@ -104,13 +104,15 @@ export function DashboardLayout() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton size="lg">
-                    <Avatar className="w-7 h-7">
-                      <AvatarFallback className="bg-steel text-white text-xs">MG</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 text-left">
-                      <div className="text-sm font-medium">Manager</div>
-                      <div className="text-xs text-muted-foreground">manager@gmail.com</div>
-                    </div>
+                     <Avatar className="w-7 h-7">
+                       <AvatarFallback className="bg-steel text-white text-xs">
+                         {user?.name?.charAt(0).toUpperCase() || 'M'}
+                       </AvatarFallback>
+                     </Avatar>
+                     <div className="flex-1 text-left">
+                       <div className="text-sm font-medium">{user?.name || 'Manager'}</div>
+                       <div className="text-xs text-muted-foreground">{user?.email || 'manager@company.com'}</div>
+                     </div>
                     <ChevronUp className="w-4 h-4" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>

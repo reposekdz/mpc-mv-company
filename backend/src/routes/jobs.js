@@ -43,4 +43,20 @@ router.delete('/:id',
   jobsController.deleteJob
 );
 
+// Bulk operations
+router.post('/bulk',
+  authorizeRole('admin', 'manager'),
+  jobsController.bulkCreateJobs
+);
+
+router.put('/bulk',
+  authorizeRole('admin', 'manager'),
+  jobsController.bulkUpdateJobs
+);
+
+router.delete('/bulk',
+  authorizeRole('admin'),
+  jobsController.bulkDeleteJobs
+);
+
 module.exports = router;

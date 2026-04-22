@@ -39,4 +39,20 @@ router.delete('/:id',
   trucksController.deleteTruck
 );
 
+// Bulk operations
+router.post('/bulk',
+  authorizeRole('admin', 'manager'),
+  trucksController.bulkCreateTrucks
+);
+
+router.put('/bulk',
+  authorizeRole('admin', 'manager'),
+  trucksController.bulkUpdateTrucks
+);
+
+router.delete('/bulk',
+  authorizeRole('admin'),
+  trucksController.bulkDeleteTrucks
+);
+
 module.exports = router;

@@ -26,10 +26,10 @@ export function LoginDialog() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await login(email, passcode);
-    if (success) {
+    const result = await login(email, passcode);
+    if (result.success) {
       setOpen(false);
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     }
   };
 

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const path = require('path');
 
@@ -22,14 +23,73 @@ app.use(morgan(NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: {
+    success: false,
+    error: 'Too many requests from this IP, please try again after 15 minutes',
+    timestamp: new Date().toISOString()
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.use('/api/', limiter);
+
+// Cache control middleware - no cache for dynamic API responses
+app.use('/api/', (req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.setHeader('Surrogate-Control', 'no-store');
+  next();
+});
+
 // Database connection test
 const pool = require('./config/db');
+
+// Root API endpoint
+app.get('/api/', (req, res) => {
+  res.json({
+    message: 'MOC-MV Company API',
+    version: '1.0.0',
+    documentation: 'API documentation available at /api/docs',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      jobs: '/api/jobs',
+      trucks: '/api/trucks',
+      employees: '/api/employees',
+      reports: '/api/reports',
+      consulting: '/api/consulting',
+      meetings: '/api/meetings',
+      analytics: '/api/analytics',
+      contact: '/api/contact'
+    },
+    features: [
+      'Pagination, sorting, filtering',
+      'Bulk operations',
+      'Rate limiting',
+      'Input validation',
+      'Authentication & Authorization',
+      'Comprehensive error handling'
+    ],
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1 + 1 AS result');
-    res.json({ status: 'healthy', database: 'connected', timestamp: new Date().toISOString() });
+    res.json({ 
+      status: 'healthy', 
+      database: 'connected', 
+      timestamp: new Date().toISOString(),
+      version: '1.0.0'
+    });
   } catch (error) {
     console.error('Health check failed:', error);
     res.status(500).json({ status: 'unhealthy', error: error.message });
@@ -49,7 +109,12 @@ app.use('/api/contact', require('./routes/contact'));
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found', path: req.originalUrl });
+  res.status(404).json({
+    success: false,
+    error: 'Route not found',
+    path: req.originalUrl,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Global error handler
@@ -57,7 +122,13 @@ app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   const status = err.status || 500;
   const message = err.message || 'Internal server error';
-  res.status(status).json({ error: message, ...(NODE_ENV === 'development' && { stack: err.stack }) });
+  
+  res.status(status).json({
+    success: false,
+    error: message,
+    timestamp: new Date().toISOString(),
+    ...(NODE_ENV === 'development' && { stack: err.stack })
+  });
 });
 
 // Start server

@@ -2,12 +2,13 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const pool = require('../config/db');
+const { apiResponse, apiError } = require('../utils/apiFeatures');
 
 const login = async (req, res, next) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return apiError(res, 'Validation failed', 400, errors.array());
     }
 
     const { email, password } = req.body;
@@ -15,7 +16,7 @@ const login = async (req, res, next) => {
     const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
     
     if (users.length === 0) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return apiError(res, 'Invalid email or password', 401);
     }
 
     const user = users[0];
@@ -23,7 +24,7 @@ const login = async (req, res, next) => {
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     
     if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      return apiError(res, 'Invalid email or password', 401);
     }
 
     const accessToken = jwt.sign(
@@ -38,19 +39,24 @@ const login = async (req, res, next) => {
       { expiresIn: '7d' }
     );
 
+    // Update last login
     await pool.query('UPDATE users SET last_login = NOW() WHERE id = ?', [user.id]);
+    
+    // Get fresh user data with updated last_login
+    const [updatedUsers] = await pool.query(
+      'SELECT id, email, name, role, created_at, last_login FROM users WHERE id = ?',
+      [user.id]
+    );
 
-    res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        created_at: user.created_at
-      },
+    return apiResponse(res, {
+      user: updatedUsers[0],
       accessToken,
       refreshToken,
-      expiresIn: 86400
+      expiresIn: 86400,
+      company: {
+        name: 'MOC-MV Company Ltd',
+        dashboard: user.role === 'manager' || user.role === 'admin' ? 'Manager Dashboard' : 'Employee Dashboard'
+      }
     });
   } catch (error) {
     next(error);
@@ -61,7 +67,7 @@ const register = async (req, res, next) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return apiError(res, 'Validation failed', 400, errors.array());
     }
 
     const { email, password, name, role } = req.body;
@@ -69,7 +75,7 @@ const register = async (req, res, next) => {
     const [existingUsers] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
     
     if (existingUsers.length > 0) {
-      return res.status(409).json({ error: 'User with this email already exists' });
+      return apiError(res, 'User with this email already exists', 409);
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -82,10 +88,10 @@ const register = async (req, res, next) => {
 
     const [newUser] = await pool.query('SELECT id, email, name, role, created_at FROM users WHERE id = ?', [result.insertId]);
 
-    res.status(201).json({
+    return apiResponse(res, {
       user: newUser[0],
       message: 'User created successfully'
-    });
+    }).status(201);
   } catch (error) {
     next(error);
   }
@@ -99,10 +105,10 @@ const getCurrentUser = async (req, res, next) => {
     );
 
     if (users.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return apiError(res, 'User not found', 404);
     }
 
-    res.json({ user: users[0] });
+    return apiResponse(res, { user: users[0] });
   } catch (error) {
     next(error);
   }
@@ -112,7 +118,7 @@ const changePassword = async (req, res, next) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return apiError(res, 'Validation failed', 400, errors.array());
     }
 
     const { currentPassword, newPassword } = req.body;
@@ -120,13 +126,13 @@ const changePassword = async (req, res, next) => {
     const [users] = await pool.query('SELECT password_hash FROM users WHERE id = ?', [req.user.id]);
     
     if (users.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      return apiError(res, 'User not found', 404);
     }
 
     const isPasswordValid = await bcrypt.compare(currentPassword, users[0].password_hash);
     
     if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Current password is incorrect' });
+      return apiError(res, 'Current password is incorrect', 401);
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -137,7 +143,7 @@ const changePassword = async (req, res, next) => {
       [newPasswordHash, req.user.id]
     );
 
-    res.json({ message: 'Password changed successfully' });
+    return apiResponse(res, { message: 'Password changed successfully' });
   } catch (error) {
     next(error);
   }

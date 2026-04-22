@@ -12,9 +12,17 @@ import { ConsultingPage } from "@/components/dashboard/ConsultingPage";
 import { MeetingsPage } from "@/components/dashboard/MeetingsPage";
 import { useAuthStore } from "@/store/useAuthStore";
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuthStore();
-  if (!isAuthenticated) return <Navigate to="/" replace />;
+function ProtectedRoute({ children, requireManager = true }: { children: React.ReactNode; requireManager?: boolean }) {
+  const { isAuthenticated, user, isManager } = useAuthStore();
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+  
+  if (requireManager && !isManager()) {
+    return <Navigate to="/" replace />;
+  }
+  
   return <>{children}</>;
 }
 
