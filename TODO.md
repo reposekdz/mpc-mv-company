@@ -1,8 +1,26 @@
-# MPC-MV Company Render Deployment Fix - TODO
+# MPC-MV Company Deployment Fix Task
+## Approved Plan Steps
 
-## Plan Steps:
-- [x] 1. Analyzed project structure, render.yaml issues, vite.config.ts, backend package.json
-- [x] 2. Updated render.yaml with fixes: frontend to web+staticPublishPath, fixed FRONTEND_URL, preserved DB/backend
-- [ ] 3. Fixed new validation errors (added plan: static-site to frontend, removed invalid inter-service envVar), user retry Render deployment
-- [x] 4. Local test: npm install && npm run build (frontend), cd backend && npm install && npm start
-- [x] 5. Verify full stack works on Render (frontend → backend API → PostgreSQL DB)
+### 1. Create vercel.json for Frontend Static Deploy (Vercel)
+- Add vercel.json to root with build/output settings for Vite.
+
+### 2. Loosen TS Configs to Fix Build Errors
+- Update tsconfig.app.json: disable strict unused checks.
+
+### 3. Test Local Build
+- Run `npm run build` and verify dist/.
+
+### 4. Deploy Backend to Render
+- Use render.yaml (already set).
+
+### 5. Update Frontend API URL
+- Point src/lib/api.ts to Render backend URL.
+
+### 6. Deploy Frontend to Vercel
+- Push and deploy.
+
+### 7. Verify Full Stack
+- Test app end-to-end.
+
+**Progress: 3/7 complete (build script fix + local test pending)**
+
