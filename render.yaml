@@ -1,17 +1,16 @@
 services:
-  # Frontend: Vite React SPA
-  - type: static_site
+  # Frontend: Vite React SPA (Static Site)
+  - type: web
     name: mpc-mv-frontend
     env: node
     buildCommand: npm ci && npm run build
-    outputDir: dist/
+    staticPublishPath: dist/
     envVars:
       - key: VITE_API_BASE_URL
         service: mpc-mv-backend
         property: url
       - key: VITE_NODE_ENV
         value: production
-
   # Backend: Node.js API
   - type: web
     name: mpc-mv-backend
@@ -29,10 +28,7 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        fromService:
-          name: mpc-mv-frontend
-          type: web
-          property: url
+        value: https://mpc-mv-company-ltd.onrender.com
 
 databases:
   - name: mpc-mv-db
