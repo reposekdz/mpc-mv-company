@@ -3,7 +3,7 @@ services:
   - type: web
     name: mpc-mv-frontend
     env: static
-    plan: free
+    plan: hobby
     buildCommand: npm ci && npm run build
     staticPublishPath: dist/
     envVars:
@@ -13,6 +13,7 @@ services:
   - type: web
     name: mpc-mv-backend
     env: node
+    plan: hobby
     rootDir: backend/
     buildCommand: npm ci
     startCommand: npm start
