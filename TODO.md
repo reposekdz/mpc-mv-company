@@ -1,43 +1,8 @@
-# MPC-MV Company App - Real Data & Functionality Implementation Plan
+# MPC-MV Company Render Deployment Fix - TODO
 
-## Overview
-Remove mocks, integrate real backend/DB data, remove GPS, add EmployeesPage, enhance features.
-
-## Steps (Approved Plan Breakdown)
-
-### 1. Backend Setup & Verify ✅ [AI Complete when done]
-- [ ] cd backend && npm install
-- [ ] node database/migrate.js
-- [ ] mysql < database/schema.sql (or node migrate)
-- [ ] node database/seed.sql
-- [ ] npm start (port 5000)
-- [ ] Test: curl http://localhost:5000/api/health
-- [ ] Test: curl http://localhost:5000/api/trucks (see 8 seeded trucks)
-
-### 2. Frontend Core Fixes [High Priority]
-- ✅ Update TrucksPage.tsx: Remove GPS/map/socket/mock, add fetchTrucks useEffect, fix data fields
-- [ ] Update ReportsPage.tsx: Add fetchReports useEffect
-- [ ] Update MeetingsPage.tsx: Add fetchMeetings useEffect  
-- [ ] Update SalariesPage.tsx: Add fetchEmployees, map to salaries view
-- ✅ Update DashboardLayout.tsx: fetchAllData on mount, auth check
-
-### 3. Create Missing Pages
-- ✅ Create EmployeesPage.tsx: Full CRUD employees
-
-### 4. Advanced Features [After core]
-- [ ] Pagination/filters in all lists (API params)
-- [ ] Reports: Uploads/PDF export
-- [ ] Trucks: Stats/maintenance alerts
-- [ ] Salaries: Bulk payroll button
-- [ ] Charts in Analytics/Overview (recharts)
-
-### 5. Testing & Polish
-- [ ] Test login: admin@mocmv.com / admin123 (manager role)
-- [ ] Verify CRUD on trucks/reports/etc.
-- [ ] Error/loading states
-- [ ] attempt_completion
-
-**Progress: 0/20** Current: Backend setup ready. Next: TrucksPage cleanup.
-
-**Updated:** Mark [✅] when AI completes step.
-
+## Plan Steps:
+- [x] 1. Analyzed project structure, render.yaml issues, vite.config.ts, backend package.json
+- [x] 2. Updated render.yaml with fixes: frontend to web+staticPublishPath, fixed FRONTEND_URL, preserved DB/backend
+- [ ] 3. Fixed new validation errors (added plan: static-site to frontend, removed invalid inter-service envVar), user retry Render deployment
+- [x] 4. Local test: npm install && npm run build (frontend), cd backend && npm install && npm start
+- [x] 5. Verify full stack works on Render (frontend → backend API → PostgreSQL DB)
