@@ -9,7 +9,7 @@ services:
   # 🎨 FRONTEND REACT STATIC SITE
   # Always available, CDN cached, zero downtime
   ##############################################################################
-  - type: static
+  - type: static_site
     name: mpc-mv-frontend
     region: frankfurt
     plan: free
