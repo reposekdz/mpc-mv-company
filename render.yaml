@@ -1,150 +1,41 @@
-##############################################################################
-# ✅ RENDER PRODUCTION DEPLOYMENT - 100% FUNCTIONAL & READY
-# Full Stack: PostgreSQL + Node.js Backend + React Frontend
-# Validated for your codebase - All endpoints, CORS, health checks work
-##############################################################################
-
 services:
-  ##############################################################################
-  # 🎨 FRONTEND REACT STATIC SITE
-  # Always available, CDN cached, zero downtime
-  ##############################################################################
+  # Frontend: Vite React SPA
   - type: static_site
     name: mpc-mv-frontend
-    region: frankfurt
-    plan: free
-    buildCommand: npm install && npm run build
-    publishDir: dist
-    autoDeploy: true
-    branch: main
-    pullRequestPreviews:
-      enabled: true
-    
+    env: node
+    buildCommand: npm ci && npm run build
+    outputDir: dist/
     envVars:
       - key: VITE_API_BASE_URL
-        service:
-          name: mpc-mv-backend
-          property: url
+        service: mpc-mv-backend
+        property: url
       - key: VITE_NODE_ENV
         value: production
-      - key: VITE_APP_NAME
-        value: MPC-MV Company Ltd
-      - key: VITE_DEFAULT_LANGUAGE
-        value: rw
-      - key: VITE_ENABLE_SOCKET
-        value: true
-    
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: public, max-age=31536000, immutable
-      - path: /index.html
-        name: Cache-Control
-        value: public, max-age=0, must-revalidate
-      - path: /*
-        name: Strict-Transport-Security
-        value: max-age=31536000
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: Access-Control-Allow-Origin
-        value: "*"
-    
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
 
-  ##############################################################################
-  # 🔙 BACKEND NODE.JS API + SOCKET.IO
-  # Full REST API + Real-Time WebSocket Server
-  ##############################################################################
+  # Backend: Node.js API
   - type: web
     name: mpc-mv-backend
-    runtime: node
-    region: frankfurt
-    plan: free
-    rootDir: backend
-    buildCommand: npm install
-    startCommand: npm run start
-    autoDeploy: true
-    branch: main
-    pullRequestPreviews:
-      enabled: true
-    
-    healthCheckPath: /api/health
-    healthCheckTimeout: 15
-    numInstances: 1
-    
+    env: node
+    rootDir: backend/
+    buildCommand: npm ci
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
       - key: DATABASE_URL
         fromDatabase:
           name: mpc-mv-db
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
-      - key: JWT_EXPIRES_IN
-        value: 24h
-      - key: BCRYPT_SALT_ROUNDS
-        value: 10
       - key: FRONTEND_URL
-        service:
+        fromService:
           name: mpc-mv-frontend
+          type: web
           property: url
-      - key: RATE_LIMIT_WINDOW
-        value: 900000
-      - key: RATE_LIMIT_MAX
-        value: 500
-      - key: TRUST_PROXY
-        value: true
-      - key: UPLOAD_MAX_SIZE
-        value: 52428800
-    
-    preDeployCommand: npm run migrate:prod
 
-##############################################################################
-# 🗄️ POSTGRESQL 16 DATABASE
-# Production grade, auto backups, point in time recovery
-##############################################################################
 databases:
   - name: mpc-mv-db
-    plan: free
-    region: frankfurt
-    postgresMajorVersion: 16
-    databaseName: mpc_mv_production
-    user: mpc_mv_admin
-    ipAllowList: []
-    backup:
-      frequency: daily
-      retentionPeriodDays: 7
+    databaseName: mpc_production
+    user: mpc_user
 
-##############################################################################
-# ✅ DEPLOYMENT VERIFIED FOR YOUR CODEBASE
-##############################################################################
-#
-# ✓ Health check endpoint /api/health exists and works
-# ✓ Database migrations run automatically on deploy
-# ✓ CORS configured correctly between frontend/backend
-# ✓ Socket.io real-time works
-# ✓ All API endpoints functional
-# ✓ Environment variables properly linked
-# ✓ Graceful shutdown supported
-# ✓ Free tier compatible
-#
-# 🚀 TO DEPLOY:
-# 1. Push this render.yaml to your GitHub repo
-# 2. Go to render.com -> New -> Blueprint
-# 3. Connect your repo
-# 4. Click "Apply"
-#
-# ⏱️ Full deployment takes ~5-7 minutes
-#
-##############################################################################
