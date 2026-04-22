@@ -2,8 +2,8 @@ services:
   # Frontend: Vite React SPA (Static Site)
   - type: web
     name: mpc-mv-frontend
-    env: node
-    plan: static-site
+    env: static
+    plan: free
     buildCommand: npm ci && npm run build
     staticPublishPath: dist/
     envVars:
