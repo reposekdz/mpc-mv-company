@@ -50,6 +50,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       localStorage.setItem("accessToken", data.accessToken);
       localStorage.setItem("refreshToken", data.refreshToken);
+      localStorage.setItem("auth_token", data.accessToken); // Sync with API client
 
       set({
         isAuthenticated: true,
@@ -70,6 +71,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: () => {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
+    localStorage.removeItem("auth_token"); // Sync with API client
     set({
       isAuthenticated: false,
       user: null,
