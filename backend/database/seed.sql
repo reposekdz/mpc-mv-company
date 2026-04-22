@@ -1,6 +1,5 @@
 -- Seed data for MOC-MV Company Ltd database
-
-USE mocmv_company;
+-- PostgreSQL version
 
 -- Default admin user (password: admin123)
 INSERT INTO users (name, email, password_hash, role, department, phone, is_active) VALUES

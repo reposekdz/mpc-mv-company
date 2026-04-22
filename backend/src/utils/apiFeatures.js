@@ -30,7 +30,7 @@ class APIFeatures {
       if (this.allowedFilters.length && !this.allowedFilters.includes(key)) return;
 
       const value = queryObj[key];
-      
+
       if (typeof value === 'object' && value !== null) {
         // Advanced operators
         Object.keys(value).forEach(op => {
@@ -41,16 +41,16 @@ class APIFeatures {
             'lte': '<=',
             'eq': '=',
             'ne': '!=',
-            'like': 'LIKE'
+            'like': 'ILIKE'
           };
-          
+
           if (operatorMap[op]) {
             filterStr += filterStr ? ' AND ' : '';
             if (op === 'like') {
-              filterStr += `${key} ${operatorMap[op]} ?`;
+              filterStr += `${key} ${operatorMap[op]} $${this.params.length + filterParams.length + 1}`;
               filterParams.push(`%${value[op]}%`);
             } else {
-              filterStr += `${key} ${operatorMap[op]} ?`;
+              filterStr += `${key} ${operatorMap[op]} $${this.params.length + filterParams.length + 1}`;
               filterParams.push(value[op]);
             }
           }
@@ -58,7 +58,7 @@ class APIFeatures {
       } else {
         // Exact match
         filterStr += filterStr ? ' AND ' : '';
-        filterStr += `${key} = ?`;
+        filterStr += `${key} = $${this.params.length + filterParams.length + 1}`;
         filterParams.push(value);
       }
     });
@@ -107,7 +107,7 @@ class APIFeatures {
     const limit = parseInt(this.queryParams.limit, 10) || 20;
     const offset = (page - 1) * limit;
 
-    this.query += ' LIMIT ? OFFSET ?';
+    this.query += ` LIMIT $${this.params.length + 1} OFFSET $${this.params.length + 2}`;
     this.params.push(limit, offset);
 
     this.pagination = {

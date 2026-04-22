@@ -1,6 +1,9 @@
 const { v4: uuidv4 } = require('uuid');
 const { validationResult } = require('express-validator');
 const pool = require('../config/db');
+const { upload, uploadToS3 } = require('../middleware/upload');
+const fs = require('fs').promises;
+const path = require('path');
 
 const getAllReports = async (req, res, next) => {
   try {
@@ -48,36 +51,52 @@ const getReportById = async (req, res, next) => {
 };
 
 const createReport = async (req, res, next) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+  upload.array('attachments', 10)(req, res, async (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
     }
 
-    const id = uuidv4();
-    const {
-      title,
-      type,
-      date,
-      status,
-      summary,
-      author
-    } = req.body;
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
 
-    await pool.query(
-      `INSERT INTO reports (
-        id, title, type, date, status, summary, author
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id, title, type, date || new Date(), status || 'draft', summary, author || req.user.name
-      ]
-    );
+      const id = uuidv4();
+      const {
+        title,
+        type,
+        date,
+        status,
+        summary,
+        author
+      } = req.body;
 
-    const [newReport] = await pool.query('SELECT * FROM reports WHERE id = ?', [id]);
-    res.status(201).json({ report: newReport[0], message: 'Report created successfully' });
-  } catch (error) {
-    next(error);
-  }
+      // Upload files to S3/local
+      const attachments = [];
+      if (req.files) {
+        for (const file of req.files) {
+          const fileUrl = await uploadToS3(file);
+          attachments.push({ filename: file.originalname, url: fileUrl, size: file.size });
+        }
+      }
+
+      await pool.query(
+        `INSERT INTO reports (
+          id, title, type, date, status, summary, author, attachments
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          id, title, type, date || new Date(), status || 'draft', summary, author || req.user.name,
+          JSON.stringify(attachments)
+        ]
+      );
+
+      const [newReport] = await pool.query('SELECT * FROM reports WHERE id = ?', [id]);
+      res.status(201).json({ report: newReport[0], message: 'Report created with attachments successfully' });
+    } catch (error) {
+      next(error);
+    }
+  });
 };
 
 const updateReport = async (req, res, next) => {

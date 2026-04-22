@@ -14,11 +14,24 @@ const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 // Middleware
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://[::1]:5173',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://[::1]:5173'],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
 }));
 app.use(helmet());
 app.use(morgan(NODE_ENV === 'production' ? 'combined' : 'dev'));
@@ -50,7 +63,7 @@ app.use('/api/', (req, res, next) => {
 });
 
 // Database connection test
-const pool = require('./config/db');
+const { pool } = require('./config/db');
 
 // Root API endpoint
 app.get('/api/', (req, res) => {
@@ -134,11 +147,54 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+const { Server } = require('socket.io');
+const http = require('http');
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'PUT'],
+    credentials: true
+  }
+});
+
+// Socket.io events for real-time features
+io.on('connection', (socket) => {
+  console.log('👤 User connected:', socket.id);
+
+  // Join rooms by role/user
+  socket.on('join-room', (room) => {
+    socket.join(room);
+    console.log(`User ${socket.id} joined room: ${room}`);
+  });
+
+  // Real-time truck GPS updates
+  socket.on('truck-update', (data) => {
+    io.emit('truck-updated', data);
+  });
+
+  // Job progress updates
+  socket.on('job-progress', (data) => {
+    io.to('managers').emit('job-updated', data);
+  });
+
+  // New notifications
+  socket.on('send-notification', (data) => {
+    io.to(data.userId).emit('notification', data);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('👤 User disconnected:', socket.id);
+  });
+});
+
+server.listen(PORT, () => {
+  console.log(`🚀 Server + Socket.io running on port ${PORT}`);
   console.log(`📊 Environment: ${NODE_ENV}`);
   console.log(`🔗 API URL: http://localhost:${PORT}/api`);
+  console.log(`🔌 Socket.io: http://localhost:${PORT}`);
 });
+
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

@@ -1,6 +1,6 @@
 const { v4: uuidv4 } = require('uuid');
 const { validationResult } = require('express-validator');
-const pool = require('../config/db');
+const { query, getClient } = require('../config/db');
 const { APIFeatures, apiResponse, apiError } = require('../utils/apiFeatures');
 
 const getAllTrucks = async (req, res, next) => {
@@ -10,8 +10,8 @@ const getAllTrucks = async (req, res, next) => {
     const params = [];
 
     if (search) {
-      baseQuery += ' AND (name LIKE ? OR plate_number LIKE ? OR model LIKE ? OR driver LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+      baseQuery += ' AND (name ILIKE $1 OR plate_number ILIKE $2 OR model ILIKE $3)';
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     const allowedFilters = ['status', 'fuel_level', 'mileage', 'year'];
@@ -25,12 +25,12 @@ const getAllTrucks = async (req, res, next) => {
     const { query, params: queryParams, pagination } = features.getQuery();
     const finalParams = [...params, ...queryParams];
 
-    const [trucks] = await pool.query(query, finalParams);
+    const trucks = await query(query, finalParams);
 
     // Get total count for pagination metadata
     const countQuery = baseQuery.replace('SELECT *', 'SELECT COUNT(*) as total');
-    const [countResult] = await pool.query(countQuery, params);
-    const total = countResult[0].total;
+    const countResult = await query(countQuery, params);
+    const total = parseInt(countResult.rows[0].total);
 
     const paginationMeta = await APIFeatures.buildPaginationMeta(
       total,
@@ -40,7 +40,7 @@ const getAllTrucks = async (req, res, next) => {
       req.query
     );
 
-    return apiResponse(res, trucks, { pagination: paginationMeta });
+    return apiResponse(res, trucks.rows, { pagination: paginationMeta });
   } catch (error) {
     next(error);
   }
@@ -49,13 +49,13 @@ const getAllTrucks = async (req, res, next) => {
 const getTruckById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const [trucks] = await pool.query('SELECT * FROM trucks WHERE id = ?', [id]);
+    const trucks = await query('SELECT * FROM trucks WHERE id = $1', [id]);
 
-    if (trucks.length === 0) {
+    if (trucks.rows.length === 0) {
       return apiError(res, 'Truck not found', 404);
     }
 
-    return apiResponse(res, trucks[0]);
+    return apiResponse(res, trucks.rows[0]);
   } catch (error) {
     next(error);
   }
@@ -68,34 +68,32 @@ const createTruck = async (req, res, next) => {
       return apiError(res, 'Validation failed', 400, errors.array());
     }
 
-    const id = uuidv4();
     const {
       name,
       plate_number,
+      type,
       model,
       year,
       status,
-      driver,
-      assigned_job,
+      driver_id,
       fuel_level,
       mileage,
       last_maintenance,
       next_maintenance
     } = req.body;
 
-    await pool.query(
+    const result = await query(
       `INSERT INTO trucks (
-        id, name, plate_number, model, year, status, driver, assigned_job,
+        plate_number, name, type, model, year, status, driver_id,
         fuel_level, mileage, last_maintenance, next_maintenance
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [
-        id, name, plate_number, model, year, status || 'available', driver,
-        assigned_job, fuel_level || 100, mileage || 0, last_maintenance, next_maintenance
+        plate_number, name, type, model, year, status || 'available', driver_id,
+        fuel_level || 100, mileage || 0, last_maintenance, next_maintenance
       ]
     );
 
-    const [newTruck] = await pool.query('SELECT * FROM trucks WHERE id = ?', [id]);
-    return apiResponse(res, newTruck[0]).status(201);
+    return apiResponse(res, result.rows[0], {}, 201);
   } catch (error) {
     next(error);
   }
@@ -109,48 +107,47 @@ const updateTruck = async (req, res, next) => {
     }
 
     const { id } = req.params;
-    const [existingTrucks] = await pool.query('SELECT id FROM trucks WHERE id = ?', [id]);
+    const existingTrucks = await pool.query('SELECT id FROM trucks WHERE id = $1', [id]);
 
-    if (existingTrucks.length === 0) {
+    if (existingTrucks.rows.length === 0) {
       return apiError(res, 'Truck not found', 404);
     }
 
     const {
       name,
       plate_number,
+      type,
       model,
       year,
       status,
-      driver,
-      assigned_job,
+      driver_id,
       fuel_level,
       mileage,
       last_maintenance,
       next_maintenance
     } = req.body;
 
-    await pool.query(
+    const result = await query(
       `UPDATE trucks SET
-        name = COALESCE(?, name),
-        plate_number = COALESCE(?, plate_number),
-        model = COALESCE(?, model),
-        year = COALESCE(?, year),
-        status = COALESCE(?, status),
-        driver = COALESCE(?, driver),
-        assigned_job = COALESCE(?, assigned_job),
-        fuel_level = COALESCE(?, fuel_level),
-        mileage = COALESCE(?, mileage),
-        last_maintenance = COALESCE(?, last_maintenance),
-        next_maintenance = COALESCE(?, next_maintenance)
-      WHERE id = ?`,
+        name = COALESCE($1, name),
+        plate_number = COALESCE($2, plate_number),
+        type = COALESCE($3, type),
+        model = COALESCE($4, model),
+        year = COALESCE($5, year),
+        status = COALESCE($6, status),
+        driver_id = COALESCE($7, driver_id),
+        fuel_level = COALESCE($8, fuel_level),
+        mileage = COALESCE($9, mileage),
+        last_maintenance = COALESCE($10, last_maintenance),
+        next_maintenance = COALESCE($11, next_maintenance)
+      WHERE id = $12 RETURNING *`,
       [
-        name, plate_number, model, year, status, driver, assigned_job,
+        name, plate_number, type, model, year, status, driver_id,
         fuel_level, mileage, last_maintenance, next_maintenance, id
       ]
     );
 
-    const [updatedTruck] = await pool.query('SELECT * FROM trucks WHERE id = ?', [id]);
-    return apiResponse(res, updatedTruck[0]);
+    return apiResponse(res, result.rows[0]);
   } catch (error) {
     next(error);
   }
@@ -159,13 +156,13 @@ const updateTruck = async (req, res, next) => {
 const deleteTruck = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const [existingTrucks] = await pool.query('SELECT id FROM trucks WHERE id = ?', [id]);
+    const existingTrucks = await pool.query('SELECT id FROM trucks WHERE id = $1', [id]);
 
-    if (existingTrucks.length === 0) {
+    if (existingTrucks.rows.length === 0) {
       return apiError(res, 'Truck not found', 404);
     }
 
-    await pool.query('DELETE FROM trucks WHERE id = ?', [id]);
+    await query('DELETE FROM trucks WHERE id = $1', [id]);
     return apiResponse(res, { message: 'Truck deleted successfully', id });
   } catch (error) {
     next(error);
@@ -174,31 +171,31 @@ const deleteTruck = async (req, res, next) => {
 
 const getTruckStats = async (req, res, next) => {
   try {
-    const [statusStats] = await pool.query(`
-      SELECT status, COUNT(*) as count 
-      FROM trucks 
+    const statusStats = await query(`
+      SELECT status, COUNT(*) as count
+      FROM trucks
       GROUP BY status
     `);
 
-    const [totalStats] = await pool.query(`
-      SELECT 
+    const totalStats = await query(`
+      SELECT
         COUNT(*) as total_trucks,
-        SUM(mileage) as total_mileage,
-        AVG(fuel_level) as average_fuel_level
+        COALESCE(SUM(mileage), 0) as total_mileage,
+        COALESCE(AVG(fuel_level), 0) as average_fuel_level
       FROM trucks
     `);
 
-    const [maintenanceDue] = await pool.query(`
+    const maintenanceDue = await query(`
       SELECT COUNT(*) as count
-      FROM trucks 
-      WHERE next_maintenance <= CURDATE() + INTERVAL 7 DAY
+      FROM trucks
+      WHERE next_maintenance <= CURRENT_DATE + INTERVAL '7 days'
       AND status != 'maintenance'
     `);
 
     return apiResponse(res, {
-      status: statusStats,
-      totals: totalStats[0],
-      maintenanceDue: maintenanceDue[0].count
+      status: statusStats.rows,
+      totals: totalStats.rows[0],
+      maintenanceDue: parseInt(maintenanceDue.rows[0].count)
     });
   } catch (error) {
     next(error);
@@ -207,12 +204,12 @@ const getTruckStats = async (req, res, next) => {
 
 // Bulk Operations
 const bulkCreateTrucks = async (req, res, next) => {
-  const connection = await pool.getConnection();
+  const client = await getClient();
   try {
-    await connection.beginTransaction();
+    await client.query('BEGIN');
 
     const { trucks } = req.body;
-    
+
     if (!Array.isArray(trucks) || trucks.length === 0) {
       return apiError(res, 'Trucks array is required', 400);
     }
@@ -226,38 +223,35 @@ const bulkCreateTrucks = async (req, res, next) => {
 
     for (let i = 0; i < trucks.length; i++) {
       const truck = trucks[i];
-      const id = uuidv4();
-      
+
       try {
-        await connection.query(
+        const result = await client.query(
           `INSERT INTO trucks (
-            id, name, plate_number, model, year, status, driver, assigned_job,
+            plate_number, name, type, model, year, status, driver_id,
             fuel_level, mileage, last_maintenance, next_maintenance
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
           [
-            id, 
-            truck.name, 
-            truck.plate_number, 
-            truck.model, 
-            truck.year, 
-            truck.status || 'available', 
-            truck.driver,
-            truck.assigned_job, 
-            truck.fuel_level || 100, 
-            truck.mileage || 0, 
-            truck.last_maintenance, 
+            truck.plate_number,
+            truck.name,
+            truck.type,
+            truck.model,
+            truck.year,
+            truck.status || 'available',
+            truck.driver_id,
+            truck.fuel_level || 100,
+            truck.mileage || 0,
+            truck.last_maintenance,
             truck.next_maintenance
           ]
         );
 
-        const [newTruck] = await connection.query('SELECT * FROM trucks WHERE id = ?', [id]);
-        createdTrucks.push(newTruck[0]);
+        createdTrucks.push(result.rows[0]);
       } catch (err) {
         errors.push({ index: i, error: err.message, truck });
       }
     }
 
-    await connection.commit();
+    await client.query('COMMIT');
 
     return apiResponse(res, {
       created: createdTrucks,
@@ -266,20 +260,20 @@ const bulkCreateTrucks = async (req, res, next) => {
       failedCount: errors.length
     });
   } catch (error) {
-    await connection.rollback();
+    await client.query('ROLLBACK');
     next(error);
   } finally {
-    connection.release();
+    client.release();
   }
 };
 
 const bulkUpdateTrucks = async (req, res, next) => {
-  const connection = await pool.getConnection();
+  const client = await getClient();
   try {
-    await connection.beginTransaction();
+    await client.query('BEGIN');
 
     const { updates } = req.body;
-    
+
     if (!Array.isArray(updates) || updates.length === 0) {
       return apiError(res, 'Updates array is required', 400);
     }
@@ -293,19 +287,19 @@ const bulkUpdateTrucks = async (req, res, next) => {
 
     for (let i = 0; i < updates.length; i++) {
       const { id, ...fields } = updates[i];
-      
+
       try {
-        const [existing] = await connection.query('SELECT id FROM trucks WHERE id = ?', [id]);
-        if (existing.length === 0) {
+        const existing = await client.query('SELECT id FROM trucks WHERE id = $1', [id]);
+        if (existing.rows.length === 0) {
           errors.push({ index: i, error: 'Truck not found', id });
           continue;
         }
 
         const setClauses = [];
-        const params = [];
+        const params = [id];
 
-        Object.keys(fields).forEach(key => {
-          setClauses.push(`${key} = ?`);
+        Object.keys(fields).forEach((key, index) => {
+          setClauses.push(`${key} = $${index + 2}`);
           params.push(fields[key]);
         });
 
@@ -314,21 +308,18 @@ const bulkUpdateTrucks = async (req, res, next) => {
           continue;
         }
 
-        params.push(id);
-
-        await connection.query(
-          `UPDATE trucks SET ${setClauses.join(', ')} WHERE id = ?`,
+        const result = await client.query(
+          `UPDATE trucks SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`,
           params
         );
 
-        const [updatedTruck] = await connection.query('SELECT * FROM trucks WHERE id = ?', [id]);
-        updatedTrucks.push(updatedTruck[0]);
+        updatedTrucks.push(result.rows[0]);
       } catch (err) {
         errors.push({ index: i, error: err.message, id });
       }
     }
 
-    await connection.commit();
+    await client.query('COMMIT');
 
     return apiResponse(res, {
       updated: updatedTrucks,
@@ -337,20 +328,20 @@ const bulkUpdateTrucks = async (req, res, next) => {
       failedCount: errors.length
     });
   } catch (error) {
-    await connection.rollback();
+    await client.query('ROLLBACK');
     next(error);
   } finally {
-    connection.release();
+    client.release();
   }
 };
 
 const bulkDeleteTrucks = async (req, res, next) => {
-  const connection = await pool.getConnection();
+  const client = await getClient();
   try {
-    await connection.beginTransaction();
+    await client.query('BEGIN');
 
     const { ids } = req.body;
-    
+
     if (!Array.isArray(ids) || ids.length === 0) {
       return apiError(res, 'IDs array is required', 400);
     }
@@ -364,22 +355,22 @@ const bulkDeleteTrucks = async (req, res, next) => {
 
     for (let i = 0; i < ids.length; i++) {
       const id = ids[i];
-      
+
       try {
-        const [existing] = await connection.query('SELECT id FROM trucks WHERE id = ?', [id]);
-        if (existing.length === 0) {
+        const existing = await client.query('SELECT id FROM trucks WHERE id = $1', [id]);
+        if (existing.rows.length === 0) {
           errors.push({ index: i, error: 'Truck not found', id });
           continue;
         }
 
-        await connection.query('DELETE FROM trucks WHERE id = ?', [id]);
+        await client.query('DELETE FROM trucks WHERE id = $1', [id]);
         deletedIds.push(id);
       } catch (err) {
         errors.push({ index: i, error: err.message, id });
       }
     }
 
-    await connection.commit();
+    await client.query('COMMIT');
 
     return apiResponse(res, {
       deleted: deletedIds,
@@ -388,10 +379,10 @@ const bulkDeleteTrucks = async (req, res, next) => {
       failedCount: errors.length
     });
   } catch (error) {
-    await connection.rollback();
+    await client.query('ROLLBACK');
     next(error);
   } finally {
-    connection.release();
+    client.release();
   }
 };
 
