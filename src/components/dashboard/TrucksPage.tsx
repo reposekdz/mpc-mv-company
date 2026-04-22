@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, useTransition } from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
@@ -45,11 +45,23 @@ import {
 
 export function TrucksPage() {
   const { t } = useTranslation();
-  const { trucks, addTruck, updateTruck, deleteTruck } = useAppStore();
+  const { trucks, fetchTrucks, addTruck, updateTruck, deleteTruck, loading } = useAppStore();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [addOpen, setAddOpen] = useState(false);
   const [editTruck, setEditTruck] = useState<Truck | null>(null);
+
+  // Fetch trucks with filters
+  const loadTrucks = useCallback(async () => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "all") params.append("status", statusFilter as string);
+    if (search) params.append("search", search);
+    await fetchTrucks(params.toString());
+  }, [fetchTrucks, statusFilter, search]);
+
+  useEffect(() => {
+    loadTrucks();
+  }, [loadTrucks]);
 
   const statusConfig: Record<TruckStatus, { label: string; color: string }> = {
     available: { label: t("trucks.available"), color: "bg-hunter/10 text-hunter border-hunter/20" },
@@ -58,49 +70,73 @@ export function TrucksPage() {
     out_of_service: { label: t("trucks.outOfService"), color: "bg-iron/10 text-iron border-iron/20" },
   };
 
-  const filtered = trucks.filter((tr) => {
-    const matchesSearch = tr.name.toLowerCase().includes(search.toLowerCase()) ||
-      tr.plateNumber.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || tr.status === statusFilter;
+  const filteredTrucks = trucks.filter((truck) => {
+    const matchesSearch = truck.name.toLowerCase().includes(search.toLowerCase()) ||
+      truck.plate_number.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === "all" || truck.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const handleAdd = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const newTruck: Truck = {
-      id: `t${Date.now()}`,
+    const newTruckData = {
       name: fd.get("name") as string,
-      plateNumber: fd.get("plateNumber") as string,
+      plate_number: fd.get("plateNumber") as string,
       model: fd.get("model") as string,
       year: Number(fd.get("year")),
-      status: "available",
+      status: "available" as TruckStatus,
       driver: fd.get("driver") as string || t("trucks.unassigned"),
-      assignedJob: "N/A",
-      fuelLevel: 100,
-      mileage: Number(fd.get("mileage")),
-      lastMaintenance: fd.get("lastMaintenance") as string,
-      nextMaintenance: fd.get("nextMaintenance") as string,
+      fuel_level: 100,
+      mileage: Number(fd.get("mileage") || 0),
+      last_maintenance: fd.get("lastMaintenance") as string,
+      next_maintenance: fd.get("nextMaintenance") as string,
     };
-    addTruck(newTruck);
-    setAddOpen(false);
+    try {
+      await addTruck(newTruckData);
+      setAddOpen(false);
+      loadTrucks(); // Refresh
+    } catch (error) {
+      console.error("Add truck failed", error);
+    }
   };
 
-  const handleEdit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleEdit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!editTruck) return;
     const fd = new FormData(e.currentTarget);
-    updateTruck(editTruck.id, {
+    const updates = {
       name: fd.get("name") as string,
-      plateNumber: fd.get("plateNumber") as string,
+      plate_number: fd.get("plateNumber") as string,
       model: fd.get("model") as string,
       year: Number(fd.get("year")),
       status: fd.get("status") as TruckStatus,
       driver: fd.get("driver") as string,
       mileage: Number(fd.get("mileage")),
-    });
-    setEditTruck(null);
+      fuel_level: Number(fd.get("fuelLevel") || editTruck.fuel_level),
+    };
+    try {
+      await updateTruck(editTruck.id, updates);
+      setEditTruck(null);
+      loadTrucks(); // Refresh
+    } catch (error) {
+      console.error("Update truck failed", error);
+    }
   };
+
+  if (loading.trucks) {
+    return (
+      <div className="space-y-6">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="animate-pulse">
+              <div className="h-48 bg-muted rounded-lg"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -108,10 +144,17 @@ export function TrucksPage() {
         <div className="flex items-center gap-3 flex-1">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder={t("trucks.searchTrucks")} value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
+            <Input 
+              placeholder={t("trucks.searchTrucks")} 
+              value={search} 
+              onChange={(e) => setSearch(e.target.value)} 
+              className="pl-9" 
+            />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40"><SelectValue placeholder={t("jobs.status")} /></SelectTrigger>
+          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as TruckStatus | "all")}>
+                  <SelectTrigger className="w-40">
+              <SelectValue placeholder={t("jobs.status")} />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t("trucks.allStatus")}</SelectItem>
               <SelectItem value="available">{t("trucks.available")}</SelectItem>
@@ -123,30 +166,66 @@ export function TrucksPage() {
         </div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-steel hover:bg-steel-dark gap-2"><Plus className="w-4 h-4" />{t("trucks.addTruck")}</Button>
+            <Button className="bg-steel hover:bg-steel-dark gap-2">
+              <Plus className="w-4 h-4" />
+              {t("trucks.addTruck")}
+            </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
-            <DialogHeader><DialogTitle className="heading-md">{t("trucks.addTruck")}</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle className="heading-md">{t("trucks.addTruck")}</DialogTitle>
+            </DialogHeader>
             <form onSubmit={handleAdd} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2"><Label>{t("trucks.name")}</Label><Input name="name" required /></div>
-                <div><Label>{t("trucks.plateNumber")}</Label><Input name="plateNumber" required /></div>
-                <div><Label>{t("trucks.model")}</Label><Input name="model" required /></div>
-                <div><Label>{t("trucks.year")}</Label><Input name="year" type="number" required /></div>
-                <div><Label>{t("trucks.driver")}</Label><Input name="driver" placeholder={t("trucks.unassigned")} /></div>
-                <div><Label>{t("trucks.mileage")} (km)</Label><Input name="mileage" type="number" defaultValue={0} /></div>
-                <div><Label>{t("trucks.lastMaintenance")}</Label><Input name="lastMaintenance" type="date" required /></div>
-                <div><Label>{t("trucks.nextMaintenance")}</Label><Input name="nextMaintenance" type="date" required /></div>
+                <div className="col-span-2">
+                  <Label>{t("trucks.name")}</Label>
+                  <Input name="name" required />
+                </div>
+                <div>
+                  <Label>{t("trucks.plateNumber")}</Label>
+                  <Input name="plateNumber" required />
+                </div>
+                <div>
+                  <Label>{t("trucks.model")}</Label>
+                  <Input name="model" required />
+                </div>
+                <div>
+                  <Label>{t("trucks.year")}</Label>
+                  <Input name="year" type="number" required />
+                </div>
+                <div>
+                  <Label>{t("trucks.driver")}</Label>
+                  <Input name="driver" placeholder={t("trucks.unassigned")} />
+                </div>
+                <div>
+                  <Label>{t("trucks.mileage")} (km)</Label>
+                  <Input name="mileage" type="number" defaultValue={0} />
+                </div>
+                <div>
+                  <Label>{t("trucks.lastMaintenance")}</Label>
+                  <Input name="lastMaintenance" type="date" required />
+                </div>
+                <div>
+                  <Label>{t("trucks.nextMaintenance")}</Label>
+                  <Input name="nextMaintenance" type="date" required />
+                </div>
               </div>
-              <Button type="submit" className="w-full bg-steel hover:bg-steel-dark">{t("trucks.addTruck")}</Button>
+              <Button type="submit" className="w-full bg-steel hover:bg-steel-dark" disabled={loading.trucks}>
+                {t("trucks.addTruck")}
+              </Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((truck, i) => (
-          <motion.div key={truck.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+        {filteredTrucks.map((truck, i) => (
+          <motion.div 
+            key={truck.id} 
+            initial={{ opacity: 0, y: 15 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ delay: i * 0.05 }}
+          >
             <Card className="hover:shadow-md transition-all group">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-4">
@@ -156,7 +235,7 @@ export function TrucksPage() {
                     </div>
                     <div>
                       <div className="text-sm font-semibold">{truck.name}</div>
-                      <div className="text-xs text-muted-foreground">{truck.plateNumber}</div>
+                      <div className="text-xs text-muted-foreground">{truck.plate_number}</div>
                     </div>
                   </div>
                   <DropdownMenu>
@@ -166,9 +245,27 @@ export function TrucksPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditTruck(truck)}><Edit className="w-3.5 h-3.5 mr-2" />{t("common.edit")}</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setEditTruck(truck)}>
+                        <Edit className="w-3.5 h-3.5 mr-2" />{t("common.edit")}
+                      </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => deleteTruck(truck.id)} className="text-destructive"><Trash2 className="w-3.5 h-3.5 mr-2" />{t("common.delete")}</DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (confirm(t("common.confirmDelete") || "Delete this truck?")) {
+                            try {
+                              await deleteTruck(truck.id as string);
+                              loadTrucks();
+                            } catch (error) {
+                              console.error("Delete failed", error);
+                            }
+                          }
+                        }} 
+                        className="text-destructive focus:bg-destructive/80"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-2" />{t("common.delete")}
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -179,41 +276,71 @@ export function TrucksPage() {
 
                 <div className="space-y-3 text-xs">
                   <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-muted-foreground"><Gauge className="w-3 h-3" />{t("trucks.model")}</span>
-                    <span className="font-medium">{truck.model} ({truck.year})</span>
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Gauge className="w-3 h-3" />{t("trucks.model")}
+                    </span>
+                    <span className="font-medium">{truck.model || "N/A"} ({truck.year || "N/A"})</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-muted-foreground"><User className="w-3 h-3" />{t("trucks.driver")}</span>
-                    <span className="font-medium">{truck.driver}</span>
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <User className="w-3 h-3" />{t("trucks.driver")}
+                    </span>
+                    <span className="font-medium">{truck.driver || t("trucks.unassigned")}</span>
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <span className="flex items-center gap-1.5 text-muted-foreground"><Fuel className="w-3 h-3" />{t("trucks.fuel")}</span>
-                      <span className="font-medium">{truck.fuelLevel}%</span>
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <Fuel className="w-3 h-3" />{t("trucks.fuel")}
+                      </span>
+                      <span className="font-medium">{truck.fuel_level}%</span>
                     </div>
-                    <Progress value={truck.fuelLevel} className="h-1.5" />
+                    <Progress value={truck.fuel_level || 0} className="h-1.5" />
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-muted-foreground"><Wrench className="w-3 h-3" />{t("trucks.mileage")}</span>
-                    <span className="font-medium">{truck.mileage.toLocaleString()} km</span>
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <Wrench className="w-3 h-3" />{t("trucks.mileage")}
+                    </span>
+                    <span className="font-medium">{Number(truck.mileage || 0).toLocaleString()} km</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
         ))}
+        {filteredTrucks.length === 0 && !loading.trucks && (
+          <div className="col-span-full text-center text-muted-foreground py-16">
+            <TruckIcon className="w-12 h-12 mx-auto mb-4 opacity-30" />
+            <p className="text-lg">{t("trucks.noTrucksFound") || "No trucks match the filters"}</p>
+            <p className="text-sm mt-1">Try adjusting your search or status filter</p>
+          </div>
+        )}
       </div>
 
+      {/* Edit Dialog */}
       <Dialog open={!!editTruck} onOpenChange={(o) => !o && setEditTruck(null)}>
         <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle className="heading-md">{t("trucks.editTruck")}</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="heading-md">{t("trucks.editTruck")}</DialogTitle>
+          </DialogHeader>
           {editTruck && (
             <form onSubmit={handleEdit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2"><Label>{t("trucks.name")}</Label><Input name="name" defaultValue={editTruck.name} required /></div>
-                <div><Label>{t("trucks.plateNumber")}</Label><Input name="plateNumber" defaultValue={editTruck.plateNumber} required /></div>
-                <div><Label>{t("trucks.model")}</Label><Input name="model" defaultValue={editTruck.model} required /></div>
-                <div><Label>{t("trucks.year")}</Label><Input name="year" type="number" defaultValue={editTruck.year} required /></div>
+                <div className="col-span-2">
+                  <Label>{t("trucks.name")}</Label>
+                  <Input name="name" defaultValue={editTruck.name} required />
+                </div>
+                <div>
+                  <Label>{t("trucks.plateNumber")}</Label>
+                  <Input name="plateNumber" defaultValue={editTruck.plate_number} required />
+                </div>
+                <div>
+                  <Label>{t("trucks.model")}</Label>
+                  <Input name="model" defaultValue={editTruck.model} required />
+                </div>
+                <div>
+                  <Label>{t("trucks.year")}</Label>
+                  <Input name="year" type="number" defaultValue={editTruck.year} required />
+                </div>
                 <div>
                   <Label>{t("jobs.status")}</Label>
                   <Select name="status" defaultValue={editTruck.status}>
@@ -226,10 +353,22 @@ export function TrucksPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div><Label>{t("trucks.driver")}</Label><Input name="driver" defaultValue={editTruck.driver} required /></div>
-                <div><Label>{t("trucks.mileage")} (km)</Label><Input name="mileage" type="number" defaultValue={editTruck.mileage} /></div>
+                <div>
+                  <Label>{t("trucks.driver")}</Label>
+                  <Input name="driver" defaultValue={editTruck.driver} required />
+                </div>
+                <div>
+                  <Label>{t("trucks.mileage")} (km)</Label>
+                  <Input name="mileage" type="number" defaultValue={editTruck.mileage} />
+                </div>
+                <div>
+                  <Label>{t("trucks.fuelLevel")} (%)</Label>
+                  <Input name="fuel_level" type="number" max={100} min={0} defaultValue={editTruck.fuel_level} />
+                </div>
               </div>
-              <Button type="submit" className="w-full bg-steel hover:bg-steel-dark">{t("trucks.updateTruck")}</Button>
+              <Button type="submit" className="w-full bg-steel hover:bg-steel-dark" disabled={loading.trucks}>
+                {t("trucks.updateTruck")}
+              </Button>
             </form>
           )}
         </DialogContent>
@@ -237,3 +376,4 @@ export function TrucksPage() {
     </div>
   );
 }
+

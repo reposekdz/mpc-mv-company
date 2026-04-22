@@ -1,36 +1,43 @@
-# MPC-MV Company - Advanced Features Completion TODO
+# MPC-MV Company App - Real Data & Functionality Implementation Plan
 
-## Status: ✅ In Progress (0/18 steps complete)
+## Overview
+Remove mocks, integrate real backend/DB data, remove GPS, add EmployeesPage, enhance features.
 
-### Phase 1: Verify & Setup (Current State Check)
-- [ ] 1. Run backend migrate/seed: `cd backend && node database/migrate.js` (phpMyAdmin ready)
-- [ ] 2. Test core APIs: Login admin@mocmv.com/admin123, GET /jobs, /trucks etc.
-- [ ] 3. Verify frontend: All dashboard pages load real data (Overview charts, tables)
+## Steps (Approved Plan Breakdown)
 
-### Phase 2: Backend Enhancements (Make Ultra-Powerful)
-- [ ] 4. Complete all controllers (bulk ops, advanced queries like jobsController)
-- [ ] 5. Add file uploads (multer for reports/attachments)
-- [ ] 6. Real-time WebSockets (socket.io for live truck GPS, job progress)
-- [ ] 7. Cron jobs (auto-payroll, maintenance reminders)
-- [ ] 8. PDF generation (puppeteer for reports)
-- [ ] 9. Email notifications (nodemailer)
+### 1. Backend Setup & Verify ✅ [AI Complete when done]
+- [ ] cd backend && npm install
+- [ ] node database/migrate.js
+- [ ] mysql < database/schema.sql (or node migrate)
+- [ ] node database/seed.sql
+- [ ] npm start (port 5000)
+- [ ] Test: curl http://localhost:5000/api/health
+- [ ] Test: curl http://localhost:5000/api/trucks (see 8 seeded trucks)
 
-### Phase 3: Frontend Advanced UI/UX
-- [ ] 10. All pages: Full CRUD forms, drag-drop kanban (Jobs/Meetings), Gantt charts
-- [ ] 11. GPS Maps (Leaflet for trucks real-time locations)
-- [ ] 12. Export CSV/PDF all pages
-- [ ] 13. Advanced filters/search/pagination (TanStack React Table/Query)
-- [ ] 14. Optimistic updates/caching in stores
+### 2. Frontend Core Fixes [High Priority]
+- ✅ Update TrucksPage.tsx: Remove GPS/map/socket/mock, add fetchTrucks useEffect, fix data fields
+- [ ] Update ReportsPage.tsx: Add fetchReports useEffect
+- [ ] Update MeetingsPage.tsx: Add fetchMeetings useEffect  
+- [ ] Update SalariesPage.tsx: Add fetchEmployees, map to salaries view
+- ✅ Update DashboardLayout.tsx: fetchAllData on mount, auth check
 
-### Phase 4: AI/Power Features
-- [ ] 15. AI Analytics (mock OpenAI predictions for job ETA, risk scoring)
-- [ ] 16. Auto-payroll with tax calc/bank export
-- [ ] 17. PWA/offline support
+### 3. Create Missing Pages
+- ✅ Create EmployeesPage.tsx: Full CRUD employees
 
-### Phase 5: Polish & Deploy
-- [ ] 18. Tests, Docker, deploy (Vercel FE, Railway BE)
+### 4. Advanced Features [After core]
+- [ ] Pagination/filters in all lists (API params)
+- [ ] Reports: Uploads/PDF export
+- [ ] Trucks: Stats/maintenance alerts
+- [ ] Salaries: Bulk payroll button
+- [ ] Charts in Analytics/Overview (recharts)
 
-**Next Step**: Confirm DB seeded → Test APIs → Backend enhancements.
+### 5. Testing & Polish
+- [ ] Test login: admin@mocmv.com / admin123 (manager role)
+- [ ] Verify CRUD on trucks/reports/etc.
+- [ ] Error/loading states
+- [ ] attempt_completion
 
-**Updated By**: BLACKBOXAI
+**Progress: 0/20** Current: Backend setup ready. Next: TrucksPage cleanup.
+
+**Updated:** Mark [✅] when AI completes step.
 

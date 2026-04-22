@@ -27,6 +27,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { useAppStore } from "@/store/useAppStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import {
   LayoutDashboard,
@@ -47,6 +48,11 @@ export function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuthStore();
+  const appStore = useAppStore();
+
+  useEffect(() => {
+    appStore.fetchAllData().catch(console.error);
+  }, []);
 
   const navItems = [
     { title: t("nav.overview"), path: "/dashboard", icon: LayoutDashboard },

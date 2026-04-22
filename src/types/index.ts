@@ -47,16 +47,19 @@ export interface Truck {
 
 export interface Employee {
   id: string;
-  name: string;
-  role: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  position: string;
   department: string;
-  baseSalary: number;
-  deductions: number;
-  bonuses: number;
-  netPay: number;
-  paymentStatus: PaymentStatus;
-  paymentDate: string;
-  payPeriod: "monthly" | "weekly";
+  salary: number;
+  hourly_rate: number;
+  hire_date: string;
+  employment_type: string;
+  status: "active" | "on_leave" | "terminated" | "resigned";
+  payment_status: PaymentStatus;
+  payment_date?: string;
 }
 
 export interface Report {
