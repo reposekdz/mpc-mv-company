@@ -3,12 +3,10 @@ services:
   - type: web
     name: mpc-mv-frontend
     env: node
+    plan: static-site
     buildCommand: npm ci && npm run build
     staticPublishPath: dist/
     envVars:
-      - key: VITE_API_BASE_URL
-        service: mpc-mv-backend
-        property: url
       - key: VITE_NODE_ENV
         value: production
   # Backend: Node.js API
