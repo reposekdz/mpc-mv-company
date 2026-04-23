@@ -5,8 +5,11 @@ import { rw } from "./locales/rw";
 import { fr } from "./locales/fr";
 import { en } from "./locales/en";
 
+// Check if we're in browser environment
+const isBrowser = typeof window !== 'undefined';
+
 i18n
-  .use(LanguageDetector)
+  .use(isBrowser ? LanguageDetector : undefined)
   .use(initReactI18next)
   .init({
     resources: {
@@ -15,14 +18,14 @@ i18n
       en: { translation: en },
     },
     fallbackLng: "rw",
-    lng: "rw",
+    lng: isBrowser ? undefined : "rw", // Let detector handle it in browser
     interpolation: {
       escapeValue: false,
     },
-    detection: {
+    detection: isBrowser ? {
       order: ["localStorage", "navigator"],
       caches: ["localStorage"],
-    },
+    } : undefined,
   });
 
 export default i18n;

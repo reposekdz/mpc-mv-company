@@ -130,13 +130,13 @@ const changePassword = async (req, res, next) => {
 
     const userResult = await query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
     const users = userResult.rows;
-    
+
     if (users.length === 0) {
       return apiError(res, 'User not found', 404);
     }
 
     const isPasswordValid = await bcrypt.compare(currentPassword, users[0].password_hash);
-    
+
     if (!isPasswordValid) {
       return apiError(res, 'Current password is incorrect', 401);
     }
@@ -155,9 +155,67 @@ const changePassword = async (req, res, next) => {
   }
 };
 
+const refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken: token } = req.body;
+
+    if (!token) {
+      return apiError(res, 'Refresh token required', 401);
+    }
+
+    jwt.verify(token, process.env.JWT_REFRESH_SECRET || 'mocmv_refresh_secret_key_2026', async (err, user) => {
+      if (err) {
+        return apiError(res, 'Invalid refresh token', 403);
+      }
+
+      // Check if user still exists
+      const userResult = await query('SELECT id, email, name, role FROM users WHERE id = $1', [user.id]);
+      const users = userResult.rows;
+
+      if (users.length === 0) {
+        return apiError(res, 'User not found', 404);
+      }
+
+      const dbUser = users[0];
+
+      const newAccessToken = jwt.sign(
+        { id: dbUser.id, email: dbUser.email, name: dbUser.name, role: dbUser.role },
+        process.env.JWT_SECRET || 'mocmv_secure_secret_key_2026',
+        { expiresIn: '24h' }
+      );
+
+      const newRefreshToken = jwt.sign(
+        { id: dbUser.id },
+        process.env.JWT_REFRESH_SECRET || 'mocmv_refresh_secret_key_2026',
+        { expiresIn: '7d' }
+      );
+
+      return apiResponse(res, {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        expiresIn: 86400,
+      });
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const logout = async (req, res, next) => {
+  try {
+    // In a stateless JWT system, logout is mainly client-side
+    // But we can update last_login or add token blacklisting if needed
+    return apiResponse(res, { message: 'Logged out successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   login,
   register,
   getCurrentUser,
-  changePassword
+  changePassword,
+  refreshToken,
+  logout
 };

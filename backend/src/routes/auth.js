@@ -34,4 +34,13 @@ router.post('/change-password',
   authController.changePassword
 );
 
+router.post('/refresh',
+  [
+    body('refreshToken').notEmpty()
+  ],
+  authController.refreshToken
+);
+
+router.post('/logout', authenticateToken, authController.logout);
+
 module.exports = router;
