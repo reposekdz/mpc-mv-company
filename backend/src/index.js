@@ -5,6 +5,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const path = require('path');
+const fs = require('fs');
 
 // Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -116,6 +117,9 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// Serve uploaded files
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/jobs', require('./routes/jobs'));
@@ -127,15 +131,28 @@ app.use('/api/meetings', require('./routes/meetings'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/contact', require('./routes/contact'));
 
-// 404 handler
-app.use((req, res) => {
+// Serve React frontend in production (only if dist exists)
+const distPath = path.join(__dirname, '../../dist');
+if (NODE_ENV === 'production' && fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+}
+
+// API 404 handler
+app.use('/api/*', (req, res) => {
   res.status(404).json({
     success: false,
-    error: 'Route not found',
+    error: 'API route not found',
     path: req.originalUrl,
     timestamp: new Date().toISOString()
   });
 });
+
+// SPA catch-all for production (must be after API routes)
+if (NODE_ENV === 'production' && fs.existsSync(distPath)) {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 // Global error handler
 app.use((err, req, res, next) => {

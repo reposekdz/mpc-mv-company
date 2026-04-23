@@ -1,12 +1,10 @@
 const express = require('express');
-const { body } = require('express-validator');
-const pool = require('../config/db');
-const { validationResult } = require('express-validator');
+const { body, validationResult } = require('express-validator');
+const { query } = require('../config/db');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Public endpoint for contact form
 router.post('/',
   [
     body('name').notEmpty().trim().isLength({ min: 2, max: 255 }),
@@ -25,13 +23,12 @@ router.post('/',
 
       const { name, email, phone, serviceType, subject, message } = req.body;
 
-      await pool.query(
-        'INSERT INTO contact_messages (name, email, phone, service_type, subject, message) VALUES (?, ?, ?, ?, ?, ?)',
+      await query(
+        'INSERT INTO contact_messages (name, email, phone, service_type, subject, message) VALUES ($1,$2,$3,$4,$5,$6)',
         [name, email, phone || null, serviceType || null, subject, message]
       );
 
       res.status(201).json({ message: 'Message sent successfully. We will contact you soon.' });
-
     } catch (error) {
       console.error('Contact form error:', error);
       res.status(500).json({ message: 'Server error. Please try again later.' });
@@ -39,52 +36,42 @@ router.post('/',
   }
 );
 
-// Protected endpoints for admin/manager
 router.use(authenticateToken);
 
 router.get('/', authorizeRole('admin', 'manager'), async (req, res) => {
   try {
-    const [messages] = await pool.query('SELECT * FROM contact_messages ORDER BY created_at DESC');
-    res.json(messages);
+    const result = await query('SELECT * FROM contact_messages ORDER BY created_at DESC');
+    res.json(result.rows);
   } catch (error) {
     console.error('Get contact messages error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Mark message as read
 router.put('/:id/read', authorizeRole('admin', 'manager'), async (req, res) => {
   try {
     const { id } = req.params;
-    
-    const [result] = await pool.query(
-      'UPDATE contact_messages SET is_read = TRUE WHERE id = ?',
+    const result = await query(
+      'UPDATE contact_messages SET is_read = TRUE WHERE id = $1 RETURNING *',
       [id]
     );
-
-    if (result.affectedRows === 0) {
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Message not found' });
     }
-
-    const [updatedMessages] = await pool.query('SELECT * FROM contact_messages WHERE id = ?', [id]);
-    res.json(updatedMessages[0]);
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Mark message read error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// Delete message
 router.delete('/:id', authorizeRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
-    
-    const [result] = await pool.query('DELETE FROM contact_messages WHERE id = ?', [id]);
-
-    if (result.affectedRows === 0) {
+    const result = await query('DELETE FROM contact_messages WHERE id = $1 RETURNING id', [id]);
+    if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Message not found' });
     }
-
     res.json({ message: 'Message deleted successfully' });
   } catch (error) {
     console.error('Delete message error:', error);

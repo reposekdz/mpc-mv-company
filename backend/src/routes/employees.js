@@ -8,20 +8,22 @@ const router = express.Router();
 router.use(authenticateToken);
 
 router.get('/', employeesController.getAllEmployees);
-router.get('/stats', employeesController.getPayrollStats);
+router.get('/stats', employeesController.getEmployeeStats);
 router.get('/:id', employeesController.getEmployeeById);
 
 router.post('/',
   authorizeRole('admin', 'manager'),
   [
-    body('name').notEmpty().trim().isLength({ min: 2, max: 255 }),
-    body('role').notEmpty().trim(),
+    body('first_name').notEmpty().trim().isLength({ min: 1, max: 100 }),
+    body('last_name').notEmpty().trim().isLength({ min: 1, max: 100 }),
+    body('email').isEmail().normalizeEmail(),
+    body('position').notEmpty().trim(),
     body('department').notEmpty().trim(),
-    body('base_salary').isFloat({ min: 0 }),
-    body('deductions').optional().isFloat({ min: 0 }),
-    body('bonuses').optional().isFloat({ min: 0 }),
-    body('payment_status').optional().isIn(['paid', 'pending', 'overdue']),
-    body('pay_period').optional().isIn(['monthly', 'weekly'])
+    body('hire_date').notEmpty(),
+    body('employment_type').optional().isIn(['full_time', 'part_time', 'contract', 'temporary']),
+    body('salary').optional().isFloat({ min: 0 }),
+    body('hourly_rate').optional().isFloat({ min: 0 }),
+    body('status').optional().isIn(['active', 'inactive', 'on_leave', 'terminated'])
   ],
   employeesController.createEmployee
 );
@@ -29,9 +31,12 @@ router.post('/',
 router.put('/:id',
   authorizeRole('admin', 'manager'),
   [
-    body('name').optional().trim().isLength({ min: 2, max: 255 }),
-    body('base_salary').optional().isFloat({ min: 0 }),
-    body('payment_status').optional().isIn(['paid', 'pending', 'overdue'])
+    body('first_name').optional().trim().isLength({ min: 1, max: 100 }),
+    body('last_name').optional().trim().isLength({ min: 1, max: 100 }),
+    body('email').optional().isEmail().normalizeEmail(),
+    body('status').optional().isIn(['active', 'inactive', 'on_leave', 'terminated']),
+    body('employment_type').optional().isIn(['full_time', 'part_time', 'contract', 'temporary']),
+    body('salary').optional().isFloat({ min: 0 })
   ],
   employeesController.updateEmployee
 );
@@ -46,7 +51,6 @@ router.delete('/:id',
   employeesController.deleteEmployee
 );
 
-// Bulk operations
 router.post('/bulk',
   authorizeRole('admin', 'manager'),
   employeesController.bulkCreateEmployees

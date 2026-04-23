@@ -1,35 +1,36 @@
-const { v4: uuidv4 } = require('uuid');
 const { validationResult } = require('express-validator');
-const pool = require('../config/db');
-const { upload, uploadToS3 } = require('../middleware/upload');
-const fs = require('fs').promises;
-const path = require('path');
+const { query } = require('../config/db');
+const { upload, getFileUrl } = require('../middleware/upload');
+const { apiResponse, apiError } = require('../utils/apiFeatures');
 
 const getAllReports = async (req, res, next) => {
   try {
     const { type, status, search } = req.query;
-    let query = 'SELECT * FROM reports WHERE 1=1';
+    let sql = `SELECT r.*, u.name as submitted_by_name, rv.name as reviewed_by_name
+               FROM reports r
+               LEFT JOIN users u ON r.submitted_by = u.id
+               LEFT JOIN users rv ON r.reviewed_by = rv.id
+               WHERE 1=1`;
     const params = [];
+    let idx = 1;
 
     if (type) {
-      query += ' AND type = ?';
+      sql += ` AND r.type = $${idx++}`;
       params.push(type);
     }
-
     if (status) {
-      query += ' AND status = ?';
+      sql += ` AND r.status = $${idx++}`;
       params.push(status);
     }
-
     if (search) {
-      query += ' AND (title LIKE ? OR summary LIKE ? OR author LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      sql += ` AND (r.title ILIKE $${idx} OR r.description ILIKE $${idx+1})`;
+      params.push(`%${search}%`,`%${search}%`);
+      idx += 2;
     }
 
-    query += ' ORDER BY date DESC, created_at DESC';
-
-    const [reports] = await pool.query(query, params);
-    res.json(reports);
+    sql += ' ORDER BY r.created_at DESC';
+    const result = await query(sql, params);
+    return apiResponse(res, result.rows);
   } catch (error) {
     next(error);
   }
@@ -38,61 +39,49 @@ const getAllReports = async (req, res, next) => {
 const getReportById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const [reports] = await pool.query('SELECT * FROM reports WHERE id = ?', [id]);
-
-    if (reports.length === 0) {
-      return res.status(404).json({ error: 'Report not found' });
-    }
-
-    res.json(reports[0]);
+    const result = await query(
+      `SELECT r.*, u.name as submitted_by_name, rv.name as reviewed_by_name
+       FROM reports r
+       LEFT JOIN users u ON r.submitted_by = u.id
+       LEFT JOIN users rv ON r.reviewed_by = rv.id
+       WHERE r.id = $1`,
+      [id]
+    );
+    if (result.rows.length === 0) return apiError(res, 'Report not found', 404);
+    return apiResponse(res, result.rows[0]);
   } catch (error) {
     next(error);
   }
 };
 
 const createReport = async (req, res, next) => {
-  upload.array('attachments', 10)(req, res, async (err) => {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
+  upload.array('attachments', 5)(req, res, async (err) => {
+    if (err) return apiError(res, err.message, 400);
 
     try {
       const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
-      }
+      if (!errors.isEmpty()) return apiError(res, 'Validation failed', 400, errors.array());
 
-      const id = uuidv4();
-      const {
-        title,
-        type,
-        date,
-        status,
-        summary,
-        author
-      } = req.body;
+      const { title, description, type, status, job_id } = req.body;
 
-      // Upload files to S3/local
       const attachments = [];
-      if (req.files) {
+      if (req.files && req.files.length > 0) {
         for (const file of req.files) {
-          const fileUrl = await uploadToS3(file);
-          attachments.push({ filename: file.originalname, url: fileUrl, size: file.size });
+          attachments.push({
+            filename: file.originalname,
+            url: getFileUrl(file),
+            size: file.size,
+            mimetype: file.mimetype
+          });
         }
       }
 
-      await pool.query(
-        `INSERT INTO reports (
-          id, title, type, date, status, summary, author, attachments
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          id, title, type, date || new Date(), status || 'draft', summary, author || req.user.name,
-          JSON.stringify(attachments)
-        ]
+      const result = await query(
+        `INSERT INTO reports (title,description,type,status,job_id,submitted_by,submitted_at,attachments)
+         VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7) RETURNING *`,
+        [title, description||null, type, status||'draft', job_id||null, req.user.id, JSON.stringify(attachments)]
       );
-
-      const [newReport] = await pool.query('SELECT * FROM reports WHERE id = ?', [id]);
-      res.status(201).json({ report: newReport[0], message: 'Report created with attachments successfully' });
+      return apiResponse(res, result.rows[0], {}, 201);
     } catch (error) {
       next(error);
     }
@@ -102,42 +91,26 @@ const createReport = async (req, res, next) => {
 const updateReport = async (req, res, next) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+    if (!errors.isEmpty()) return apiError(res, 'Validation failed', 400, errors.array());
 
     const { id } = req.params;
-    const [existingReports] = await pool.query('SELECT id FROM reports WHERE id = ?', [id]);
+    const existing = await query('SELECT id FROM reports WHERE id = $1', [id]);
+    if (existing.rows.length === 0) return apiError(res, 'Report not found', 404);
 
-    if (existingReports.length === 0) {
-      return res.status(404).json({ error: 'Report not found' });
-    }
+    const { title, description, type, status, job_id, reviewed_by } = req.body;
 
-    const {
-      title,
-      type,
-      date,
-      status,
-      summary,
-      author
-    } = req.body;
-
-    await pool.query(
+    const result = await query(
       `UPDATE reports SET
-        title = COALESCE(?, title),
-        type = COALESCE(?, type),
-        date = COALESCE(?, date),
-        status = COALESCE(?, status),
-        summary = COALESCE(?, summary),
-        author = COALESCE(?, author)
-      WHERE id = ?`,
-      [
-        title, type, date, status, summary, author, id
-      ]
+        title=COALESCE($1,title), description=COALESCE($2,description),
+        type=COALESCE($3,type), status=COALESCE($4,status),
+        job_id=COALESCE($5,job_id),
+        reviewed_by=COALESCE($6,reviewed_by),
+        reviewed_at=CASE WHEN $4 IN ('reviewed','approved','rejected') THEN NOW() ELSE reviewed_at END,
+        updated_at=NOW()
+       WHERE id=$7 RETURNING *`,
+      [title, description, type, status, job_id, reviewed_by||null, id]
     );
-
-    const [updatedReport] = await pool.query('SELECT * FROM reports WHERE id = ?', [id]);
-    res.json({ report: updatedReport[0], message: 'Report updated successfully' });
+    return apiResponse(res, result.rows[0]);
   } catch (error) {
     next(error);
   }
@@ -146,14 +119,10 @@ const updateReport = async (req, res, next) => {
 const deleteReport = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const [existingReports] = await pool.query('SELECT id FROM reports WHERE id = ?', [id]);
-
-    if (existingReports.length === 0) {
-      return res.status(404).json({ error: 'Report not found' });
-    }
-
-    await pool.query('DELETE FROM reports WHERE id = ?', [id]);
-    res.json({ message: 'Report deleted successfully' });
+    const existing = await query('SELECT id FROM reports WHERE id = $1', [id]);
+    if (existing.rows.length === 0) return apiError(res, 'Report not found', 404);
+    await query('DELETE FROM reports WHERE id = $1', [id]);
+    return apiResponse(res, { message: 'Report deleted successfully' });
   } catch (error) {
     next(error);
   }
@@ -161,41 +130,19 @@ const deleteReport = async (req, res, next) => {
 
 const getReportStats = async (req, res, next) => {
   try {
-    const [typeStats] = await pool.query(`
-      SELECT type, COUNT(*) as count 
-      FROM reports 
-      GROUP BY type
-    `);
-
-    const [statusStats] = await pool.query(`
-      SELECT status, COUNT(*) as count 
-      FROM reports 
-      GROUP BY status
-    `);
-
-    const [monthlyStats] = await pool.query(`
-      SELECT DATE_FORMAT(date, '%Y-%m') as month, COUNT(*) as count
-      FROM reports
-      WHERE date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-      GROUP BY month
-      ORDER BY month DESC
-    `);
-
-    res.json({
-      types: typeStats,
-      status: statusStats,
-      monthly: monthlyStats
-    });
+    const [typeStats, statusStats, monthlyStats] = await Promise.all([
+      query('SELECT type, COUNT(*) as count FROM reports GROUP BY type'),
+      query('SELECT status, COUNT(*) as count FROM reports GROUP BY status'),
+      query(`SELECT TO_CHAR(created_at,'YYYY-MM') as month, COUNT(*) as count
+             FROM reports
+             WHERE created_at >= CURRENT_DATE - INTERVAL '6 months'
+             GROUP BY TO_CHAR(created_at,'YYYY-MM')
+             ORDER BY month DESC`)
+    ]);
+    return apiResponse(res, { types: typeStats.rows, status: statusStats.rows, monthly: monthlyStats.rows });
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = {
-  getAllReports,
-  getReportById,
-  createReport,
-  updateReport,
-  deleteReport,
-  getReportStats
-};
+module.exports = { getAllReports, getReportById, createReport, updateReport, deleteReport, getReportStats };

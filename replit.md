@@ -41,7 +41,15 @@ A full-stack company management platform for MOC-MV Company Ltd, built with Reac
 
 ## API Routing
 
-The Vite dev server proxies all `/api/*` requests to `http://localhost:3001`. In production, set `VITE_API_URL` or configure a reverse proxy.
+- **Development**: Vite dev server (port 5000) proxies `/api/*` to backend (port 3001)
+- **Production**: Backend serves both the API (`/api/*`) and the built React app (`dist/`) on port 5000
+
+## Deployment
+
+- Build command: `npm run build`
+- Run command: `PORT=5000 node backend/src/index.js`
+- Target: `vm` (required for Socket.io persistent connections)
+- Backend serves `dist/` static files and all React routes in production
 
 ## Environment Variables (Secrets)
 
@@ -56,10 +64,10 @@ All set via Replit Secrets:
 
 Schema covers: users, jobs, trucks, employees, salaries, reports, meetings, consulting_topics, analytics_data, homework, contact_messages, service_requests.
 
-Default seeded accounts:
-- Admin: `admin@mocmv.com` / `admin123`
-- Manager: `manager@mocmv.com` / `admin123`
-- Viewer: `viewer@mocmv.com` / `admin123`
+Default seeded accounts (all use the same password):
+- Admin: `admin@mocmv.com` / `Admin@123`
+- Manager: `manager@mocmv.com` / `Admin@123`
+- Viewer: `viewer@mocmv.com` / `Admin@123`
 
 ## Running Database Migrations
 

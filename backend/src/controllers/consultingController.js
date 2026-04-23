@@ -1,32 +1,31 @@
-const { v4: uuidv4 } = require('uuid');
 const { validationResult } = require('express-validator');
-const pool = require('../config/db');
+const { query } = require('../config/db');
+const { apiResponse, apiError } = require('../utils/apiFeatures');
 
 const getAllTopics = async (req, res, next) => {
   try {
-    const { category, status, search } = req.query;
-    let query = 'SELECT * FROM consulting_topics WHERE 1=1';
+    const { status, priority, search } = req.query;
+    let sql = `SELECT ct.*, u.name as assigned_to_name FROM consulting_topics ct LEFT JOIN users u ON ct.assigned_to = u.id WHERE 1=1`;
     const params = [];
-
-    if (category) {
-      query += ' AND category = ?';
-      params.push(category);
-    }
+    let idx = 1;
 
     if (status) {
-      query += ' AND status = ?';
+      sql += ` AND ct.status = $${idx++}`;
       params.push(status);
     }
-
+    if (priority) {
+      sql += ` AND ct.priority = $${idx++}`;
+      params.push(priority);
+    }
     if (search) {
-      query += ' AND (title LIKE ? OR description LIKE ? OR author LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      sql += ` AND (ct.title ILIKE $${idx} OR ct.description ILIKE $${idx+1} OR ct.client_name ILIKE $${idx+2})`;
+      params.push(`%${search}%`,`%${search}%`,`%${search}%`);
+      idx += 3;
     }
 
-    query += ' ORDER BY date DESC, created_at DESC';
-
-    const [topics] = await pool.query(query, params);
-    res.json(topics);
+    sql += ' ORDER BY ct.created_at DESC';
+    const result = await query(sql, params);
+    return apiResponse(res, result.rows);
   } catch (error) {
     next(error);
   }
@@ -35,18 +34,18 @@ const getAllTopics = async (req, res, next) => {
 const getTopicById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const [topics] = await pool.query('SELECT * FROM consulting_topics WHERE id = ?', [id]);
+    const topicResult = await query(
+      `SELECT ct.*, u.name as assigned_to_name FROM consulting_topics ct LEFT JOIN users u ON ct.assigned_to = u.id WHERE ct.id = $1`,
+      [id]
+    );
+    if (topicResult.rows.length === 0) return apiError(res, 'Topic not found', 404);
 
-    if (topics.length === 0) {
-      return res.status(404).json({ error: 'Topic not found' });
-    }
-
-    const [replies] = await pool.query(
-      'SELECT * FROM consulting_replies WHERE topic_id = ? ORDER BY date ASC, created_at ASC',
+    const repliesResult = await query(
+      'SELECT cr.*, u.name as author_user_name FROM consulting_replies cr LEFT JOIN users u ON cr.author_id = u.id WHERE cr.topic_id = $1 ORDER BY cr.created_at ASC',
       [id]
     );
 
-    res.json({ ...topics[0], replies });
+    return apiResponse(res, { ...topicResult.rows[0], replies: repliesResult.rows });
   } catch (error) {
     next(error);
   }
@@ -55,32 +54,21 @@ const getTopicById = async (req, res, next) => {
 const createTopic = async (req, res, next) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+    if (!errors.isEmpty()) return apiError(res, 'Validation failed', 400, errors.array());
 
-    const id = uuidv4();
     const {
-      title,
-      description,
-      author,
-      date,
-      category,
-      status
+      title, description, client_name, client_email, client_phone,
+      status, priority, assigned_to, estimated_hours, budget, start_date, end_date
     } = req.body;
 
-    await pool.query(
-      `INSERT INTO consulting_topics (
-        id, title, description, author, date, category, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id, title, description, author || req.user.name, date || new Date(),
-        category, status || 'open'
-      ]
+    const result = await query(
+      `INSERT INTO consulting_topics (title,description,client_name,client_email,client_phone,status,priority,assigned_to,estimated_hours,budget,start_date,end_date)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+      [title, description||null, client_name, client_email||null, client_phone||null,
+       status||'new', priority||'medium', assigned_to||null, estimated_hours||0, budget||0,
+       start_date||null, end_date||null]
     );
-
-    const [newTopic] = await pool.query('SELECT * FROM consulting_topics WHERE id = ?', [id]);
-    res.status(201).json({ topic: newTopic[0], message: 'Topic created successfully' });
+    return apiResponse(res, result.rows[0], {}, 201);
   } catch (error) {
     next(error);
   }
@@ -89,38 +77,31 @@ const createTopic = async (req, res, next) => {
 const updateTopic = async (req, res, next) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+    if (!errors.isEmpty()) return apiError(res, 'Validation failed', 400, errors.array());
 
     const { id } = req.params;
-    const [existingTopics] = await pool.query('SELECT id FROM consulting_topics WHERE id = ?', [id]);
-
-    if (existingTopics.length === 0) {
-      return res.status(404).json({ error: 'Topic not found' });
-    }
+    const existing = await query('SELECT id FROM consulting_topics WHERE id = $1', [id]);
+    if (existing.rows.length === 0) return apiError(res, 'Topic not found', 404);
 
     const {
-      title,
-      description,
-      category,
-      status
+      title, description, client_name, client_email, client_phone,
+      status, priority, assigned_to, estimated_hours, actual_hours, budget, start_date, end_date
     } = req.body;
 
-    await pool.query(
+    const result = await query(
       `UPDATE consulting_topics SET
-        title = COALESCE(?, title),
-        description = COALESCE(?, description),
-        category = COALESCE(?, category),
-        status = COALESCE(?, status)
-      WHERE id = ?`,
-      [
-        title, description, category, status, id
-      ]
+        title=COALESCE($1,title), description=COALESCE($2,description),
+        client_name=COALESCE($3,client_name), client_email=COALESCE($4,client_email),
+        client_phone=COALESCE($5,client_phone), status=COALESCE($6,status),
+        priority=COALESCE($7,priority), assigned_to=COALESCE($8,assigned_to),
+        estimated_hours=COALESCE($9,estimated_hours), actual_hours=COALESCE($10,actual_hours),
+        budget=COALESCE($11,budget), start_date=COALESCE($12,start_date),
+        end_date=COALESCE($13,end_date), updated_at=NOW()
+       WHERE id=$14 RETURNING *`,
+      [title,description,client_name,client_email,client_phone,status,priority,
+       assigned_to,estimated_hours,actual_hours,budget,start_date,end_date,id]
     );
-
-    const [updatedTopic] = await pool.query('SELECT * FROM consulting_topics WHERE id = ?', [id]);
-    res.json({ topic: updatedTopic[0], message: 'Topic updated successfully' });
+    return apiResponse(res, result.rows[0]);
   } catch (error) {
     next(error);
   }
@@ -129,14 +110,10 @@ const updateTopic = async (req, res, next) => {
 const deleteTopic = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const [existingTopics] = await pool.query('SELECT id FROM consulting_topics WHERE id = ?', [id]);
-
-    if (existingTopics.length === 0) {
-      return res.status(404).json({ error: 'Topic not found' });
-    }
-
-    await pool.query('DELETE FROM consulting_topics WHERE id = ?', [id]);
-    res.json({ message: 'Topic deleted successfully' });
+    const existing = await query('SELECT id FROM consulting_topics WHERE id = $1', [id]);
+    if (existing.rows.length === 0) return apiError(res, 'Topic not found', 404);
+    await query('DELETE FROM consulting_topics WHERE id = $1', [id]);
+    return apiResponse(res, { message: 'Topic deleted successfully' });
   } catch (error) {
     next(error);
   }
@@ -145,31 +122,19 @@ const deleteTopic = async (req, res, next) => {
 const addReply = async (req, res, next) => {
   try {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
-    }
+    if (!errors.isEmpty()) return apiError(res, 'Validation failed', 400, errors.array());
 
     const { topicId } = req.params;
-    const [existingTopics] = await pool.query('SELECT id FROM consulting_topics WHERE id = ?', [topicId]);
+    const existing = await query('SELECT id FROM consulting_topics WHERE id = $1', [topicId]);
+    if (existing.rows.length === 0) return apiError(res, 'Topic not found', 404);
 
-    if (existingTopics.length === 0) {
-      return res.status(404).json({ error: 'Topic not found' });
-    }
-
-    const id = uuidv4();
-    const { author, content, date } = req.body;
-
-    await pool.query(
-      `INSERT INTO consulting_replies (
-        id, topic_id, author, content, date
-      ) VALUES (?, ?, ?, ?, ?)`,
-      [
-        id, topicId, author || req.user.name, content, date || new Date()
-      ]
+    const { content } = req.body;
+    const result = await query(
+      `INSERT INTO consulting_replies (topic_id, content, author_id, author_name)
+       VALUES ($1,$2,$3,$4) RETURNING *`,
+      [topicId, content, req.user.id, req.user.name]
     );
-
-    const [newReply] = await pool.query('SELECT * FROM consulting_replies WHERE id = ?', [id]);
-    res.status(201).json({ reply: newReply[0], message: 'Reply added successfully' });
+    return apiResponse(res, result.rows[0], {}, 201);
   } catch (error) {
     next(error);
   }
@@ -178,25 +143,13 @@ const addReply = async (req, res, next) => {
 const deleteReply = async (req, res, next) => {
   try {
     const { replyId } = req.params;
-    const [existingReplies] = await pool.query('SELECT id FROM consulting_replies WHERE id = ?', [replyId]);
-
-    if (existingReplies.length === 0) {
-      return res.status(404).json({ error: 'Reply not found' });
-    }
-
-    await pool.query('DELETE FROM consulting_replies WHERE id = ?', [replyId]);
-    res.json({ message: 'Reply deleted successfully' });
+    const existing = await query('SELECT id FROM consulting_replies WHERE id = $1', [replyId]);
+    if (existing.rows.length === 0) return apiError(res, 'Reply not found', 404);
+    await query('DELETE FROM consulting_replies WHERE id = $1', [replyId]);
+    return apiResponse(res, { message: 'Reply deleted successfully' });
   } catch (error) {
     next(error);
   }
 };
 
-module.exports = {
-  getAllTopics,
-  getTopicById,
-  createTopic,
-  updateTopic,
-  deleteTopic,
-  addReply,
-  deleteReply
-};
+module.exports = { getAllTopics, getTopicById, createTopic, updateTopic, deleteTopic, addReply, deleteReply };

@@ -5,20 +5,18 @@ const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Protected endpoints
 router.use(authenticateToken);
 router.get('/dashboard', analyticsController.getDashboardStats);
-router.get('/', analyticsController.getAnalyticsData);
 router.get('/trends', analyticsController.getMonthlyTrends);
+router.get('/', analyticsController.getAnalyticsData);
 
 router.post('/',
   authorizeRole('admin'),
   [
-    body('month').notEmpty(),
-    body('revenue').isFloat({ min: 0 }),
-    body('expenses').isFloat({ min: 0 }),
-    body('profit').isFloat(),
-    body('jobs_completed').isInt({ min: 0 })
+    body('metric_name').notEmpty().trim(),
+    body('metric_value').isFloat(),
+    body('category').notEmpty().trim(),
+    body('metric_date').optional()
   ],
   analyticsController.addAnalyticsRecord
 );

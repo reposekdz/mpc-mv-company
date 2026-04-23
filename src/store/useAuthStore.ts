@@ -34,7 +34,7 @@ interface AuthState {
   hasRole: (role: User['role']) => boolean;
 }
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 // Helper function to check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined';

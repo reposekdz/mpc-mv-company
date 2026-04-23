@@ -13,8 +13,11 @@ router.get('/:id', consultingController.getTopicById);
 router.post('/',
   [
     body('title').notEmpty().trim().isLength({ min: 3, max: 255 }),
-    body('description').notEmpty().trim(),
-    body('category').isIn(['performance', 'strategy', 'operations', 'finance'])
+    body('description').optional().trim(),
+    body('client_name').notEmpty().trim(),
+    body('client_email').optional().isEmail().normalizeEmail(),
+    body('status').optional().isIn(['new', 'in_progress', 'on_hold', 'completed', 'cancelled']),
+    body('priority').optional().isIn(['low', 'medium', 'high', 'urgent'])
   ],
   consultingController.createTopic
 );
@@ -22,15 +25,14 @@ router.post('/',
 router.put('/:id',
   [
     body('title').optional().trim().isLength({ min: 3, max: 255 }),
-    body('status').optional().isIn(['open', 'resolved', 'in_discussion'])
+    body('status').optional().isIn(['new', 'in_progress', 'on_hold', 'completed', 'cancelled']),
+    body('priority').optional().isIn(['low', 'medium', 'high', 'urgent'])
   ],
   consultingController.updateTopic
 );
 
 router.post('/:topicId/replies',
-  [
-    body('content').notEmpty().trim()
-  ],
+  [body('content').notEmpty().trim()],
   consultingController.addReply
 );
 

@@ -1,60 +1,45 @@
 const multer = require('multer');
 const path = require('path');
-const AWS = require('aws-sdk');
+const fs = require('fs');
 
-// Configure AWS S3 (fallback to local disk)
-const s3 = new AWS.S3({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION || 'us-east-1'
-});
+const uploadDir = path.join(__dirname, '../../uploads/reports');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
-const storage = s3 ? multer.memoryStorage() : multer.diskStorage({
+const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/reports/');
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
 
 const fileFilter = (req, file, cb) => {
-  // Accept PDF, DOCX, images, videos for reports
-  if (file.mimetype === 'application/pdf' || 
-      file.mimetype.match(/image\/.*/) || 
-      file.mimetype.match(/video\/.*/) ||
-      file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+  const allowed = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/plain'
+  ];
+  if (allowed.includes(file.mimetype) || file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type'), false);
+    cb(new Error('Invalid file type. Only PDF, DOC, DOCX, TXT, and images allowed.'), false);
   }
 };
 
-const limits = {
-  fileSize: 50 * 1024 * 1024, // 50MB
-  files: 10
-};
-
-const upload = multer({ 
+const upload = multer({
   storage,
   fileFilter,
-  limits
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+    files: 5
+  }
 });
 
-const uploadToS3 = async (file) => {
-  if (!s3) return file.path;
-  
-  const params = {
-    Bucket: process.env.AWS_BUCKET,
-    Key: `reports/${Date.now()}-${file.originalname}`,
-    Body: file.buffer,
-    ContentType: file.mimetype,
-    ACL: 'public-read'
-  };
+const getFileUrl = (file) => `/uploads/reports/${file.filename}`;
 
-  const result = await s3.upload(params).promise();
-  return result.Location;
-};
-
-module.exports = { upload, uploadToS3 };
-
+module.exports = { upload, getFileUrl };
