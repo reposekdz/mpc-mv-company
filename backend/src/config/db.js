@@ -3,22 +3,22 @@ const { Pool } = require('pg');
 let pool;
 
 if (process.env.DATABASE_URL) {
+  const url = process.env.DATABASE_URL;
+  const isLocalOrReplit = url.includes('localhost') || url.includes('127.0.0.1') || !url.includes('sslmode=require');
   pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-      rejectUnauthorized: false
-    },
+    connectionString: url,
+    ssl: isLocalOrReplit ? false : { rejectUnauthorized: false },
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,
   });
 } else {
   pool = new Pool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'postgres',
-    password: process.env.DB_PASSWORD || 'password',
-    database: process.env.DB_NAME || 'mocmv_company',
-    port: process.env.DB_PORT || 5432,
+    host: process.env.PGHOST || process.env.DB_HOST || 'localhost',
+    user: process.env.PGUSER || process.env.DB_USER || 'postgres',
+    password: process.env.PGPASSWORD || process.env.DB_PASSWORD || 'password',
+    database: process.env.PGDATABASE || process.env.DB_NAME || 'mocmv_company',
+    port: parseInt(process.env.PGPORT || process.env.DB_PORT || '5432'),
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 10000,

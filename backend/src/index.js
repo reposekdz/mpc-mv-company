@@ -21,9 +21,14 @@ const allowedOrigins = [
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
+const isReplitOrigin = (origin) => {
+  if (!origin) return false;
+  return origin.endsWith('.replit.dev') || origin.endsWith('.replit.app') || origin.endsWith('.repl.co');
+};
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+    if (!origin || allowedOrigins.includes(origin) || isReplitOrigin(origin) || process.env.NODE_ENV === 'development') {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
