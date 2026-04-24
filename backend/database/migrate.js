@@ -1,4 +1,5 @@
 const { Client } = require('pg');
+const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
@@ -97,12 +98,30 @@ async function runMigration() {
     }
     console.log('✅ Seed data inserted/verified successfully');
 
+    // ─── Ensure admin/manager passwords always match Admin@123 (idempotent) ───
+    const defaultPassword = process.env.SEED_DEFAULT_PASSWORD || 'Admin@123';
+    const hash = await bcrypt.hash(defaultPassword, 10);
+    const seededEmails = [
+      'admin@mocmv.com',
+      'manager@mocmv.com',
+      'viewer@mocmv.com',
+      'mike@mocmv.com',
+      'lisa@mocmv.com',
+    ];
+    for (const email of seededEmails) {
+      await dbClient.query(
+        'UPDATE users SET password_hash = $1, is_active = true WHERE email = $2',
+        [hash, email]
+      );
+    }
+    console.log(`✅ Reset password for ${seededEmails.length} seed users to "${defaultPassword}"`);
+
     await dbClient.end();
 
     console.log('\n🎉 Migration completed successfully!');
     console.log('\n✅ Database is ready for production use');
     console.log('Default admin user: admin@mocmv.com');
-    console.log('Default password: admin123');
+    console.log(`Default password: ${defaultPassword}`);
 
   } catch (error) {
     console.error('❌ Migration failed:', error.message);

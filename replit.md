@@ -59,10 +59,19 @@ A full-stack company management platform for MOC-MV Company Ltd, built with Reac
 
 ## Deployment
 
+### Replit (single-origin, recommended)
 - Build command: `npm run build`
 - Run command: `node backend/src/index.js`
 - Target: `vm` (required for Socket.io persistent connections)
-- Backend serves `dist/` static files and all React routes in production
+- Backend serves `dist/` static files and all React routes in production.
+
+### Vercel (frontend) + Render (backend)
+- **Render** (`render.yaml` blueprint): provisions `mocmv-backend` web service + `mocmv-db` PostgreSQL.
+  - `startCommand` runs `database/migrate.js && node src/index.js` so the schema, seed, and admin password reset are applied on every deploy.
+  - `JWT_SECRET` / `JWT_REFRESH_SECRET` are auto-generated. `SEED_DEFAULT_PASSWORD` and `FRONTEND_URL` must be set in the Render dashboard after first deploy.
+- **Vercel** (`vercel.json`): builds Vite (`npm run build` → `dist/`) and rewrites `/api/*` and `/socket.io/*` to `https://mocmv-backend.onrender.com`. Update those URLs to match the actual Render service name if it differs.
+- The frontend never needs `VITE_API_URL` set on Vercel — the rewrite turns relative `/api/*` calls into the right Render URL. If `VITE_API_URL` is accidentally left pointing at `http://localhost:*`, `src/lib/api.ts` ignores it in production builds (safety net).
+- CORS in `backend/src/index.js` auto-allows `*.vercel.app`, `*.onrender.com`, `*.replit.{dev,app}` and `*.repl.co`. Add a custom domain via the `ALLOWED_ORIGINS` env var (comma-separated).
 
 ## Environment Variables (Secrets)
 

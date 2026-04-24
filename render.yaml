@@ -1,26 +1,39 @@
+# Render blueprint — deploys the Express backend + PostgreSQL on the Hobby tier.
+# After first deploy, set FRONTEND_URL to your Vercel URL in the Render dashboard.
 services:
-  # Backend: Node.js API
   - type: web
-    name: mpc-mv-backend
-    env: node
-    plan: free
-    rootDir: backend/
-    buildCommand: npm ci
-    startCommand: npm start
+    name: mocmv-backend
+    runtime: node
+    plan: starter            # Render's "Hobby" tier (no sleep, $7/mo)
+    rootDir: backend
+    region: oregon
+    buildCommand: npm install
+    startCommand: node database/migrate.js && node src/index.js
+    healthCheckPath: /api/health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "20"
+      - key: PORT
+        value: "10000"
       - key: DATABASE_URL
         fromDatabase:
-          name: mpc-mv-db
+          name: mocmv-db
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: SEED_DEFAULT_PASSWORD
+        sync: false           # Set this in the Render dashboard (defaults to Admin@123)
       - key: FRONTEND_URL
-        value: https://mpc-mv-company-ltd.onrender.com
+        sync: false           # Set this to your Vercel URL after first deploy
 
 databases:
-  - name: mpc-mv-db
-    databaseName: mpc_production
-    user: mpc_user
-
+  - name: mocmv-db
+    databaseName: mocmv_production
+    user: mocmv_user
+    plan: basic-256mb         # Render's free PostgreSQL tier
+    region: oregon

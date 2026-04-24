@@ -273,3 +273,16 @@ CREATE INDEX IF NOT EXISTS idx_consulting_status ON consulting_topics(status);
 CREATE INDEX IF NOT EXISTS idx_analytics_date ON analytics_data(metric_date);
 CREATE INDEX IF NOT EXISTS idx_contact_status ON contact_messages(status);
 CREATE INDEX IF NOT EXISTS idx_service_requests_status ON service_requests(status);
+
+-- ─── Backfill columns added after the original schema (idempotent) ───
+ALTER TABLE meetings  ADD COLUMN IF NOT EXISTS date            DATE;
+ALTER TABLE meetings  ADD COLUMN IF NOT EXISTS priority        VARCHAR(20)  DEFAULT 'medium';
+ALTER TABLE meetings  ADD COLUMN IF NOT EXISTS organizer_name  VARCHAR(255);
+ALTER TABLE meetings  ADD COLUMN IF NOT EXISTS notes           TEXT;
+ALTER TABLE meetings  ADD COLUMN IF NOT EXISTS online_link     VARCHAR(500);
+
+ALTER TABLE reports   ADD COLUMN IF NOT EXISTS summary         TEXT;
+ALTER TABLE reports   ADD COLUMN IF NOT EXISTS content         TEXT;
+ALTER TABLE reports   ADD COLUMN IF NOT EXISTS author          VARCHAR(255);
+ALTER TABLE reports   ADD COLUMN IF NOT EXISTS period_start    DATE;
+ALTER TABLE reports   ADD COLUMN IF NOT EXISTS period_end      DATE;

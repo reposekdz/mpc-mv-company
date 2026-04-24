@@ -14,25 +14,43 @@ const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
 const allowedOrigins = [
+  'http://localhost:5000',
   'http://localhost:5173',
+  'http://127.0.0.1:5000',
   'http://127.0.0.1:5173',
+  'http://[::1]:5000',
   'http://[::1]:5173',
-  process.env.FRONTEND_URL
+  process.env.FRONTEND_URL,
+  ...(process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean),
 ].filter(Boolean);
 
-const isReplitOrigin = (origin) => {
+// Auto-allow common deploy hosts so adding a new Vercel/Render preview "just works"
+const isTrustedHostedOrigin = (origin) => {
   if (!origin) return false;
-  return origin.endsWith('.replit.dev') || origin.endsWith('.replit.app') || origin.endsWith('.repl.co');
+  try {
+    const { hostname } = new URL(origin);
+    return (
+      hostname.endsWith('.replit.dev') ||
+      hostname.endsWith('.replit.app') ||
+      hostname.endsWith('.repl.co') ||
+      hostname.endsWith('.vercel.app') ||
+      hostname.endsWith('.onrender.com')
+    );
+  } catch {
+    return false;
+  }
 };
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || isReplitOrigin(origin) || NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      console.warn(`CORS blocked origin: ${origin}`);
-      callback(null, true);
+    // Allow same-origin / curl / mobile (no Origin header)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || isTrustedHostedOrigin(origin)) {
+      return callback(null, true);
     }
+    if (NODE_ENV !== 'production') return callback(null, true);
+    console.warn(`CORS blocked origin: ${origin}`);
+    callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
@@ -147,11 +165,11 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin) || isReplitOrigin(origin) || NODE_ENV === 'development') {
-        callback(null, true);
-      } else {
-        callback(null, false);
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin) || isTrustedHostedOrigin(origin) || NODE_ENV !== 'production') {
+        return callback(null, true);
       }
+      callback(null, false);
     },
     methods: ['GET', 'POST'],
     credentials: true,

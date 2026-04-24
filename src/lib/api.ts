@@ -1,4 +1,18 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// Resolve API base URL.
+//   • Default: relative `/api` — works with Vite proxy in dev and with the
+//     Vercel rewrite (or single-origin Render deploy) in production.
+//   • Override: set VITE_API_URL (e.g. `https://my-backend.onrender.com`)
+//     to call a backend on a different origin directly.
+//
+// Safety net: a hardcoded `http://localhost:*` value would break a production
+// build on Vercel/Render, so in production we ignore any localhost override
+// and fall back to the relative `/api`.
+const ENV_API_URL = (import.meta.env.VITE_API_URL || '').trim();
+const IS_PROD_BUILD = !import.meta.env.DEV;
+const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?/i.test(ENV_API_URL);
+const SAFE_ENV_URL = IS_PROD_BUILD && isLocalhost ? '' : ENV_API_URL;
+const RAW_API_URL = (SAFE_ENV_URL || '/api').replace(/\/+$/, '');
+const API_BASE_URL = RAW_API_URL.endsWith('/api') ? RAW_API_URL : `${RAW_API_URL}/api`;
 
 class ApiClient {
   private token: string | null = null;
@@ -32,11 +46,21 @@ class ApiClient {
       ...options.headers,
     };
 
-    const response = await fetch(url, {
-      ...options,
-      headers,
-      credentials: 'include',
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include',
+      });
+    } catch (networkError: any) {
+      // Browser/network error (DNS, CORS, offline, backend asleep, etc.)
+      const reason =
+        networkError?.message?.includes('Failed to fetch')
+          ? `Cannot reach the server at ${url}. The backend may be sleeping (Render free tier wakes after ~30s on first request), offline, or blocked by CORS.`
+          : networkError?.message || 'Network request failed';
+      throw new ApiError(reason, 0, { url, cause: networkError?.message });
+    }
 
     const json = await response.json().catch(() => ({}));
 
