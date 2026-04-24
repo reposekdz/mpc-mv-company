@@ -74,7 +74,13 @@ const createTruck = async (req, res, next) => {
        fuel_level||100, mileage||0, last_maintenance||null, next_maintenance||null,
        current_location||null, value||0, purchase_date||null]
     );
-    return apiResponse(res, result.rows[0], {}, 201);
+    const truck = result.rows[0];
+    const io = req.app.get('io');
+    if (io) {
+      io.to('managers').emit('truck-created', truck);
+      io.to('admins').emit('truck-created', truck);
+    }
+    return apiResponse(res, truck, {}, 201);
   } catch (error) {
     next(error);
   }
@@ -108,7 +114,13 @@ const updateTruck = async (req, res, next) => {
       [name, plate_number, type, model, year, status, driver_id,
        fuel_level, mileage, last_maintenance, next_maintenance, current_location, id]
     );
-    return apiResponse(res, result.rows[0]);
+    const truck = result.rows[0];
+    const io = req.app.get('io');
+    if (io) {
+      io.to('managers').emit('truck-updated', truck);
+      io.to('admins').emit('truck-updated', truck);
+    }
+    return apiResponse(res, truck);
   } catch (error) {
     next(error);
   }

@@ -1,7 +1,13 @@
 const { validationResult } = require('express-validator');
 const { query } = require('../config/db');
-const { upload, getFileUrl } = require('../middleware/upload');
 const { apiResponse, apiError } = require('../utils/apiFeatures');
+
+const normalizeReport = (row) => ({
+  ...row,
+  author: row.author || row.submitted_by_name || 'Manager',
+  status: row.status || 'draft',
+  summary: row.summary || row.description || null,
+});
 
 const getAllReports = async (req, res, next) => {
   try {
@@ -23,14 +29,14 @@ const getAllReports = async (req, res, next) => {
       params.push(status);
     }
     if (search) {
-      sql += ` AND (r.title ILIKE $${idx} OR r.description ILIKE $${idx+1})`;
-      params.push(`%${search}%`,`%${search}%`);
-      idx += 2;
+      sql += ` AND (r.title ILIKE $${idx} OR r.description ILIKE $${idx+1} OR r.summary ILIKE $${idx+2})`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      idx += 3;
     }
 
     sql += ' ORDER BY r.created_at DESC';
     const result = await query(sql, params);
-    return apiResponse(res, result.rows);
+    return apiResponse(res, result.rows.map(normalizeReport));
   } catch (error) {
     next(error);
   }
@@ -48,44 +54,47 @@ const getReportById = async (req, res, next) => {
       [id]
     );
     if (result.rows.length === 0) return apiError(res, 'Report not found', 404);
-    return apiResponse(res, result.rows[0]);
+    return apiResponse(res, normalizeReport(result.rows[0]));
   } catch (error) {
     next(error);
   }
 };
 
 const createReport = async (req, res, next) => {
-  upload.array('attachments', 5)(req, res, async (err) => {
-    if (err) return apiError(res, err.message, 400);
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return apiError(res, 'Validation failed', 400, errors.array());
 
-    try {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) return apiError(res, 'Validation failed', 400, errors.array());
+    const { title, description, summary, content, type, status, author, period_start, period_end } = req.body;
 
-      const { title, description, type, status, job_id } = req.body;
+    const result = await query(
+      `INSERT INTO reports
+        (title, description, summary, content, type, status, submitted_by, submitted_at, author, period_start, period_end)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8,$9,$10) RETURNING *`,
+      [
+        title,
+        description || summary || null,
+        summary || description || null,
+        content || null,
+        type || 'operational',
+        status || 'draft',
+        req.user?.id || null,
+        author || req.user?.name || 'Manager',
+        period_start || null,
+        period_end || null,
+      ]
+    );
 
-      const attachments = [];
-      if (req.files && req.files.length > 0) {
-        for (const file of req.files) {
-          attachments.push({
-            filename: file.originalname,
-            url: getFileUrl(file),
-            size: file.size,
-            mimetype: file.mimetype
-          });
-        }
-      }
-
-      const result = await query(
-        `INSERT INTO reports (title,description,type,status,job_id,submitted_by,submitted_at,attachments)
-         VALUES ($1,$2,$3,$4,$5,$6,NOW(),$7) RETURNING *`,
-        [title, description||null, type, status||'draft', job_id||null, req.user.id, JSON.stringify(attachments)]
-      );
-      return apiResponse(res, result.rows[0], {}, 201);
-    } catch (error) {
-      next(error);
+    const io = req.app.get('io');
+    if (io) {
+      io.to('managers').emit('report-created', result.rows[0]);
+      io.to('admins').emit('report-created', result.rows[0]);
     }
-  });
+
+    return apiResponse(res, normalizeReport(result.rows[0]), {}, 201);
+  } catch (error) {
+    next(error);
+  }
 };
 
 const updateReport = async (req, res, next) => {
@@ -97,20 +106,38 @@ const updateReport = async (req, res, next) => {
     const existing = await query('SELECT id FROM reports WHERE id = $1', [id]);
     if (existing.rows.length === 0) return apiError(res, 'Report not found', 404);
 
-    const { title, description, type, status, job_id, reviewed_by } = req.body;
+    const {
+      title, description, summary, content, type, status,
+      author, period_start, period_end,
+    } = req.body;
 
     const result = await query(
       `UPDATE reports SET
-        title=COALESCE($1,title), description=COALESCE($2,description),
-        type=COALESCE($3,type), status=COALESCE($4,status),
-        job_id=COALESCE($5,job_id),
-        reviewed_by=COALESCE($6,reviewed_by),
-        reviewed_at=CASE WHEN $4 IN ('reviewed','approved','rejected') THEN NOW() ELSE reviewed_at END,
+        title=COALESCE($1,title),
+        description=COALESCE($2,description),
+        summary=COALESCE($3,summary),
+        content=COALESCE($4,content),
+        type=COALESCE($5,type),
+        status=COALESCE($6,status),
+        author=COALESCE($7,author),
+        period_start=COALESCE($8,period_start),
+        period_end=COALESCE($9,period_end),
         updated_at=NOW()
-       WHERE id=$7 RETURNING *`,
-      [title, description, type, status, job_id, reviewed_by||null, id]
+       WHERE id=$10 RETURNING *`,
+      [
+        title || null,
+        description || summary || null,
+        summary || null,
+        content || null,
+        type || null,
+        status || null,
+        author || null,
+        period_start || null,
+        period_end || null,
+        id,
+      ]
     );
-    return apiResponse(res, result.rows[0]);
+    return apiResponse(res, normalizeReport(result.rows[0]));
   } catch (error) {
     next(error);
   }
@@ -130,16 +157,11 @@ const deleteReport = async (req, res, next) => {
 
 const getReportStats = async (req, res, next) => {
   try {
-    const [typeStats, statusStats, monthlyStats] = await Promise.all([
+    const [typeStats, statusStats] = await Promise.all([
       query('SELECT type, COUNT(*) as count FROM reports GROUP BY type'),
       query('SELECT status, COUNT(*) as count FROM reports GROUP BY status'),
-      query(`SELECT TO_CHAR(created_at,'YYYY-MM') as month, COUNT(*) as count
-             FROM reports
-             WHERE created_at >= CURRENT_DATE - INTERVAL '6 months'
-             GROUP BY TO_CHAR(created_at,'YYYY-MM')
-             ORDER BY month DESC`)
     ]);
-    return apiResponse(res, { types: typeStats.rows, status: statusStats.rows, monthly: monthlyStats.rows });
+    return apiResponse(res, { byType: typeStats.rows, byStatus: statusStats.rows });
   } catch (error) {
     next(error);
   }

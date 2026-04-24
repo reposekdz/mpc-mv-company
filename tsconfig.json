@@ -1,5 +1,7 @@
 {
-  "ignoreDeprecations": "6.0",
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0"
+  },
   "files": [],
   "references": [
     {"path": "./tsconfig.app.json"},

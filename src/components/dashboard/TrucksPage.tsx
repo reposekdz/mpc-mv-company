@@ -1,379 +1,343 @@
-import { useState, useEffect, useCallback, useTransition } from "react";
-import { useTranslation } from "react-i18next";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAppStore } from "@/store/useAppStore";
-import type { Truck, TruckStatus } from "@/types";
-import {
-  Plus,
-  Search,
-  MoreVertical,
-  Trash2,
-  Edit,
-  Fuel,
-  Gauge,
-  Wrench,
-  User,
-  Truck as TruckIcon,
-} from "lucide-react";
+import { Plus, Search, Edit, Trash2, Fuel, Gauge, Wrench, MapPin, Truck as TruckIcon, Filter } from "lucide-react";
+import { toast } from "sonner";
+
+const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+  available: { label: "Bihari", bg: "bg-green-100", text: "text-green-800", dot: "bg-green-500" },
+  in_use: { label: "Bikoreshwa", bg: "bg-blue-100", text: "text-blue-800", dot: "bg-blue-500" },
+  maintenance: { label: "Gutunganya", bg: "bg-amber-100", text: "text-amber-800", dot: "bg-amber-500" },
+  out_of_service: { label: "Ntibikora", bg: "bg-red-100", text: "text-red-800", dot: "bg-red-500" },
+};
+
+const EMPTY_FORM = {
+  name: "", plate_number: "", type: "truck", model: "", year: "",
+  status: "available", driver_id: "", fuel_level: "100", mileage: "0",
+  last_maintenance: "", next_maintenance: "", current_location: "", value: "", purchase_date: "",
+};
 
 export function TrucksPage() {
-  const { t } = useTranslation();
   const { trucks, fetchTrucks, addTruck, updateTruck, deleteTruck, loading } = useAppStore();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
-  const [editTruck, setEditTruck] = useState<Truck | null>(null);
+  const [editTruck, setEditTruck] = useState<any | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<any | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
 
-  // Fetch trucks with filters
-  const loadTrucks = useCallback(async () => {
-    const params = new URLSearchParams();
-    if (statusFilter !== "all") params.append("status", statusFilter as string);
-    if (search) params.append("search", search);
-    await fetchTrucks(params.toString());
-  }, [fetchTrucks, statusFilter, search]);
+  useEffect(() => { fetchTrucks(); }, []);
 
-  useEffect(() => {
-    loadTrucks();
-  }, [loadTrucks]);
-
-  const statusConfig: Record<TruckStatus, { label: string; color: string }> = {
-    available: { label: t("trucks.available"), color: "bg-hunter/10 text-hunter border-hunter/20" },
-    in_use: { label: t("trucks.inUse"), color: "bg-steel/10 text-steel border-steel/20" },
-    maintenance: { label: t("trucks.maintenance"), color: "bg-amber/10 text-amber border-amber/20" },
-    out_of_service: { label: t("trucks.outOfService"), color: "bg-iron/10 text-iron border-iron/20" },
-  };
-
-  const filteredTrucks = trucks.filter((truck) => {
-    const matchesSearch = truck.name.toLowerCase().includes(search.toLowerCase()) ||
-      truck.plate_number.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === "all" || truck.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  const filtered = (Array.isArray(trucks) ? trucks : []).filter(t => {
+    const q = search.toLowerCase();
+    const matchSearch = !q || t.name?.toLowerCase().includes(q) || t.plate_number?.toLowerCase().includes(q) || t.model?.toLowerCase().includes(q);
+    const matchStatus = statusFilter === "all" || t.status === statusFilter;
+    return matchSearch && matchStatus;
   });
 
-  const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const newTruckData = {
-      name: fd.get("name") as string,
-      plate_number: fd.get("plateNumber") as string,
-      model: fd.get("model") as string,
-      year: Number(fd.get("year")),
-      status: "available" as TruckStatus,
-      driver: fd.get("driver") as string || t("trucks.unassigned"),
-      fuel_level: 100,
-      mileage: Number(fd.get("mileage") || 0),
-      last_maintenance: fd.get("lastMaintenance") as string,
-      next_maintenance: fd.get("nextMaintenance") as string,
-    };
-    try {
-      await addTruck(newTruckData);
-      setAddOpen(false);
-      loadTrucks(); // Refresh
-    } catch (error) {
-      console.error("Add truck failed", error);
-    }
+  const stats = {
+    total: filtered.length,
+    available: filtered.filter(t => t.status === 'available').length,
+    in_use: filtered.filter(t => t.status === 'in_use').length,
+    maintenance: filtered.filter(t => t.status === 'maintenance').length,
   };
 
-  const handleEdit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!editTruck) return;
-    const fd = new FormData(e.currentTarget);
-    const updates = {
-      name: fd.get("name") as string,
-      plate_number: fd.get("plateNumber") as string,
-      model: fd.get("model") as string,
-      year: Number(fd.get("year")),
-      status: fd.get("status") as TruckStatus,
-      driver: fd.get("driver") as string,
-      mileage: Number(fd.get("mileage")),
-      fuel_level: Number(fd.get("fuelLevel") || editTruck.fuel_level),
-    };
     try {
-      await updateTruck(editTruck.id, updates);
-      setEditTruck(null);
-      loadTrucks(); // Refresh
-    } catch (error) {
-      console.error("Update truck failed", error);
-    }
+      const payload = {
+        name: form.name, plate_number: form.plate_number, type: form.type,
+        model: form.model || null, year: Number(form.year) || null,
+        status: form.status, driver_id: form.driver_id || null,
+        fuel_level: Number(form.fuel_level) || 100, mileage: Number(form.mileage) || 0,
+        last_maintenance: form.last_maintenance || null, next_maintenance: form.next_maintenance || null,
+        current_location: form.current_location || null, value: Number(form.value) || 0,
+        purchase_date: form.purchase_date || null,
+      };
+      if (editTruck) {
+        await updateTruck(editTruck.id, payload);
+        toast.success("Ikinyabiziga cyavuguruwe neza!");
+        setEditTruck(null);
+      } else {
+        await addTruck(payload);
+        toast.success("Ikinyabiziga cyongerewe neza!");
+        setAddOpen(false);
+      }
+      setForm(EMPTY_FORM);
+    } catch { toast.error("Habaye ikosa. Ongera ugerageze."); }
   };
 
-  if (loading.trucks) {
-    return (
-      <div className="space-y-6">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="animate-pulse">
-              <div className="h-48 bg-muted rounded-lg"></div>
-            </div>
-          ))}
+  const handleEdit = (truck: any) => {
+    setForm({
+      name: truck.name || "", plate_number: truck.plate_number || "",
+      type: truck.type || "truck", model: truck.model || "", year: String(truck.year || ""),
+      status: truck.status || "available", driver_id: String(truck.driver_id || ""),
+      fuel_level: String(truck.fuel_level || 100), mileage: String(truck.mileage || 0),
+      last_maintenance: (truck.last_maintenance || "").substring(0, 10),
+      next_maintenance: (truck.next_maintenance || "").substring(0, 10),
+      current_location: truck.current_location || "", value: String(truck.value || ""),
+      purchase_date: (truck.purchase_date || "").substring(0, 10),
+    });
+    setEditTruck(truck);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteConfirm) return;
+    try {
+      await deleteTruck(deleteConfirm.id);
+      toast.success("Ikinyabiziga cyasibwe neza!");
+      setDeleteConfirm(null);
+    } catch { toast.error("Habaye ikosa."); }
+  };
+
+  const fuelColor = (level: number) => {
+    if (level >= 60) return "text-green-600";
+    if (level >= 30) return "text-amber-600";
+    return "text-red-600";
+  };
+
+  const TruckForm = () => (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label>Izina *</Label>
+          <Input value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} required placeholder="Izina ry'ikinyabiziga" />
+        </div>
+        <div>
+          <Label>Iplaki *</Label>
+          <Input value={form.plate_number} onChange={e => setForm(f => ({...f, plate_number: e.target.value}))} required placeholder="RAA 001 A" />
+        </div>
+        <div>
+          <Label>Ubwoko</Label>
+          <Select value={form.type} onValueChange={v => setForm(f => ({...f, type: v}))}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="truck">Kamyo</SelectItem>
+              <SelectItem value="excavator">Excavator</SelectItem>
+              <SelectItem value="crane">Crane</SelectItem>
+              <SelectItem value="bulldozer">Bulldozer</SelectItem>
+              <SelectItem value="other">Ibindi</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Imimerere</Label>
+          <Select value={form.status} onValueChange={v => setForm(f => ({...f, status: v}))}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="available">Bihari</SelectItem>
+              <SelectItem value="in_use">Bikoreshwa</SelectItem>
+              <SelectItem value="maintenance">Gutunganya</SelectItem>
+              <SelectItem value="out_of_service">Ntibikora</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Modeli</Label>
+          <Input value={form.model} onChange={e => setForm(f => ({...f, model: e.target.value}))} placeholder="Volvo FH16..." />
+        </div>
+        <div>
+          <Label>Umwaka</Label>
+          <Input type="number" value={form.year} onChange={e => setForm(f => ({...f, year: e.target.value}))} placeholder="2020" min="1990" max="2030" />
+        </div>
+        <div>
+          <Label>Peteroli (%)</Label>
+          <Input type="number" value={form.fuel_level} onChange={e => setForm(f => ({...f, fuel_level: e.target.value}))} min="0" max="100" />
+        </div>
+        <div>
+          <Label>Kilometero</Label>
+          <Input type="number" value={form.mileage} onChange={e => setForm(f => ({...f, mileage: e.target.value}))} min="0" />
+        </div>
+        <div>
+          <Label>Gutunganya kwa Nyuma</Label>
+          <Input type="date" value={form.last_maintenance} onChange={e => setForm(f => ({...f, last_maintenance: e.target.value}))} />
+        </div>
+        <div>
+          <Label>Gutunganya Gukurikira</Label>
+          <Input type="date" value={form.next_maintenance} onChange={e => setForm(f => ({...f, next_maintenance: e.target.value}))} />
+        </div>
+        <div className="col-span-2">
+          <Label>Ahantu Hiriho</Label>
+          <Input value={form.current_location} onChange={e => setForm(f => ({...f, current_location: e.target.value}))} placeholder="Kigali, Musanze..." />
         </div>
       </div>
-    );
-  }
+      <div className="flex gap-2 pt-2">
+        <Button type="submit" className="flex-1 bg-blue-800 hover:bg-blue-900" disabled={loading.trucks}>
+          {loading.trucks ? "Gutegereza..." : editTruck ? "Vugurura" : "Shyiraho"}
+        </Button>
+        <Button type="button" variant="outline" onClick={() => { setEditTruck(null); setAddOpen(false); setForm(EMPTY_FORM); }}>Hagarika</Button>
+      </div>
+    </form>
+  );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="relative flex-1 max-w-sm">
+    <div className="space-y-4">
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Ibinyabiziga Byose", value: stats.total, color: "bg-blue-50 border-blue-200", dot: "bg-blue-500" },
+          { label: "Bihari", value: stats.available, color: "bg-green-50 border-green-200", dot: "bg-green-500" },
+          { label: "Bikoreshwa", value: stats.in_use, color: "bg-blue-50 border-blue-200", dot: "bg-blue-400" },
+          { label: "Gutunganya", value: stats.maintenance, color: "bg-amber-50 border-amber-200", dot: "bg-amber-500" },
+        ].map((s, i) => (
+          <motion.div key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
+            className={`rounded-lg border p-3 ${s.color}`}>
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${s.dot}`} />
+              <div>
+                <p className="text-xs text-muted-foreground">{s.label}</p>
+                <p className="text-xl font-bold">{s.value}</p>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <div className="flex items-center gap-2 flex-1">
+          <div className="relative flex-1 max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input 
-              placeholder={t("trucks.searchTrucks")} 
-              value={search} 
-              onChange={(e) => setSearch(e.target.value)} 
-              className="pl-9" 
-            />
+            <Input placeholder="Shakisha ibinyabiziga..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
           </div>
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as TruckStatus | "all")}>
-                  <SelectTrigger className="w-40">
-              <SelectValue placeholder={t("jobs.status")} />
-            </SelectTrigger>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-36 h-9"><Filter className="w-3.5 h-3.5 mr-1" /><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">{t("trucks.allStatus")}</SelectItem>
-              <SelectItem value="available">{t("trucks.available")}</SelectItem>
-              <SelectItem value="in_use">{t("trucks.inUse")}</SelectItem>
-              <SelectItem value="maintenance">{t("trucks.maintenance")}</SelectItem>
-              <SelectItem value="out_of_service">{t("trucks.outOfService")}</SelectItem>
+              <SelectItem value="all">Imimerere Yose</SelectItem>
+              <SelectItem value="available">Bihari</SelectItem>
+              <SelectItem value="in_use">Bikoreshwa</SelectItem>
+              <SelectItem value="maintenance">Gutunganya</SelectItem>
+              <SelectItem value="out_of_service">Ntibikora</SelectItem>
             </SelectContent>
           </Select>
         </div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-steel hover:bg-steel-dark gap-2">
-              <Plus className="w-4 h-4" />
-              {t("trucks.addTruck")}
+            <Button className="bg-blue-800 hover:bg-blue-900 text-white gap-2 h-9">
+              <Plus className="w-4 h-4" /> Ongeraho Ikinyabiziga
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="heading-md">{t("trucks.addTruck")}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Label>{t("trucks.name")}</Label>
-                  <Input name="name" required />
-                </div>
-                <div>
-                  <Label>{t("trucks.plateNumber")}</Label>
-                  <Input name="plateNumber" required />
-                </div>
-                <div>
-                  <Label>{t("trucks.model")}</Label>
-                  <Input name="model" required />
-                </div>
-                <div>
-                  <Label>{t("trucks.year")}</Label>
-                  <Input name="year" type="number" required />
-                </div>
-                <div>
-                  <Label>{t("trucks.driver")}</Label>
-                  <Input name="driver" placeholder={t("trucks.unassigned")} />
-                </div>
-                <div>
-                  <Label>{t("trucks.mileage")} (km)</Label>
-                  <Input name="mileage" type="number" defaultValue={0} />
-                </div>
-                <div>
-                  <Label>{t("trucks.lastMaintenance")}</Label>
-                  <Input name="lastMaintenance" type="date" required />
-                </div>
-                <div>
-                  <Label>{t("trucks.nextMaintenance")}</Label>
-                  <Input name="nextMaintenance" type="date" required />
-                </div>
-              </div>
-              <Button type="submit" className="w-full bg-steel hover:bg-steel-dark" disabled={loading.trucks}>
-                {t("trucks.addTruck")}
-              </Button>
-            </form>
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+            <DialogHeader><DialogTitle>Ongeraho Ikinyabiziga Gishya</DialogTitle></DialogHeader>
+            <TruckForm />
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredTrucks.map((truck, i) => (
-          <motion.div 
-            key={truck.id} 
-            initial={{ opacity: 0, y: 15 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            transition={{ delay: i * 0.05 }}
-          >
-            <Card className="hover:shadow-md transition-all group">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-steel/10 flex items-center justify-center">
-                      <TruckIcon className="w-5 h-5 text-steel" />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold">{truck.name}</div>
-                      <div className="text-xs text-muted-foreground">{truck.plate_number}</div>
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <MoreVertical className="w-3.5 h-3.5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditTruck(truck)}>
-                        <Edit className="w-3.5 h-3.5 mr-2" />{t("common.edit")}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (confirm(t("common.confirmDelete") || "Delete this truck?")) {
-                            try {
-                              await deleteTruck(truck.id as string);
-                              loadTrucks();
-                            } catch (error) {
-                              console.error("Delete failed", error);
-                            }
-                          }
-                        }} 
-                        className="text-destructive focus:bg-destructive/80"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 mr-2" />{t("common.delete")}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-
-                <Badge variant="secondary" className={`text-[10px] mb-4 ${statusConfig[truck.status].color}`}>
-                  {statusConfig[truck.status].label}
-                </Badge>
-
-                <div className="space-y-3 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <Gauge className="w-3 h-3" />{t("trucks.model")}
-                    </span>
-                    <span className="font-medium">{truck.model || "N/A"} ({truck.year || "N/A"})</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <User className="w-3 h-3" />{t("trucks.driver")}
-                    </span>
-                    <span className="font-medium">{truck.driver || t("trucks.unassigned")}</span>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="flex items-center gap-1.5 text-muted-foreground">
-                        <Fuel className="w-3 h-3" />{t("trucks.fuel")}
+      {/* Excel-like Table */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="rounded-lg border border-slate-300 overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-gradient-to-r from-slate-800 to-slate-700 text-white">
+                {["#", "Izina", "Iplaki", "Ubwoko", "Imimerere", "Peteroli", "Kilometero", "Ahantu", "Gutunganya", "Ibikorwa"]
+                  .map((h, i) => (
+                    <th key={i} className="px-3 py-3 text-left text-xs font-bold uppercase tracking-wider border-r border-slate-600 last:border-r-0 whitespace-nowrap">{h}</th>
+                  ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {loading.trucks ? (
+                <tr><td colSpan={10} className="py-12 text-center text-muted-foreground">Gutegereza amakuru...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={10} className="py-12 text-center text-muted-foreground">
+                  Nta binyabiziga byabonetse.
+                </td></tr>
+              ) : filtered.map((truck, idx) => {
+                const sc = STATUS_CONFIG[truck.status] || STATUS_CONFIG.available;
+                const fuel = Number(truck.fuel_level || 0);
+                const nextMaint = truck.next_maintenance ? new Date(truck.next_maintenance) : null;
+                const isMaintenanceDue = nextMaint && nextMaint < new Date();
+                return (
+                  <tr key={truck.id} className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/70'} hover:bg-slate-100/70 transition-colors`}>
+                    <td className="px-3 py-2.5 text-xs text-slate-500 border-r border-slate-100 font-mono">{idx + 1}</td>
+                    <td className="px-3 py-2.5 border-r border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <TruckIcon className="w-4 h-4 text-slate-400" />
+                        <span className="font-semibold text-slate-800">{truck.name}</span>
+                      </div>
+                      {truck.model && <div className="text-xs text-slate-500 pl-6">{truck.model} {truck.year && `(${truck.year})`}</div>}
+                    </td>
+                    <td className="px-3 py-2.5 border-r border-slate-100 font-mono text-xs font-bold text-slate-700">{truck.plate_number}</td>
+                    <td className="px-3 py-2.5 border-r border-slate-100 text-xs capitalize">{truck.type || '-'}</td>
+                    <td className="px-3 py-2.5 border-r border-slate-100">
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold ${sc.bg} ${sc.text}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />
+                        {sc.label}
                       </span>
-                      <span className="font-medium">{truck.fuel_level}%</span>
-                    </div>
-                    <Progress value={truck.fuel_level || 0} className="h-1.5" />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-muted-foreground">
-                      <Wrench className="w-3 h-3" />{t("trucks.mileage")}
-                    </span>
-                    <span className="font-medium">{Number(truck.mileage || 0).toLocaleString()} km</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-        {filteredTrucks.length === 0 && !loading.trucks && (
-          <div className="col-span-full text-center text-muted-foreground py-16">
-            <TruckIcon className="w-12 h-12 mx-auto mb-4 opacity-30" />
-            <p className="text-lg">{t("trucks.noTrucksFound") || "No trucks match the filters"}</p>
-            <p className="text-sm mt-1">Try adjusting your search or status filter</p>
-          </div>
-        )}
-      </div>
+                    </td>
+                    <td className="px-3 py-2.5 border-r border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <Fuel className={`w-3.5 h-3.5 ${fuelColor(fuel)}`} />
+                        <Progress value={fuel} className="h-2 w-14" />
+                        <span className={`text-xs font-medium ${fuelColor(fuel)}`}>{fuel}%</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 border-r border-slate-100">
+                      <div className="flex items-center gap-1 text-xs">
+                        <Gauge className="w-3.5 h-3.5 text-slate-400" />
+                        <span>{Number(truck.mileage || 0).toLocaleString()} km</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 border-r border-slate-100">
+                      {truck.current_location ? (
+                        <div className="flex items-center gap-1 text-xs text-slate-600">
+                          <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span className="truncate max-w-[100px]">{truck.current_location}</span>
+                        </div>
+                      ) : <span className="text-xs text-slate-400">-</span>}
+                    </td>
+                    <td className="px-3 py-2.5 border-r border-slate-100">
+                      <div className={`flex items-center gap-1 text-xs ${isMaintenanceDue ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>
+                        <Wrench className="w-3 h-3" />
+                        {truck.next_maintenance ? new Date(truck.next_maintenance).toLocaleDateString('rw-RW') : '-'}
+                        {isMaintenanceDue && <span className="text-red-500 text-[10px]">!</span>}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center justify-center gap-1">
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 hover:bg-blue-100 hover:text-blue-700" onClick={() => handleEdit(truck)}>
+                          <Edit className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 hover:bg-red-100 hover:text-red-700" onClick={() => setDeleteConfirm(truck)}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </motion.div>
 
       {/* Edit Dialog */}
-      <Dialog open={!!editTruck} onOpenChange={(o) => !o && setEditTruck(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="heading-md">{t("trucks.editTruck")}</DialogTitle>
-          </DialogHeader>
-          {editTruck && (
-            <form onSubmit={handleEdit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Label>{t("trucks.name")}</Label>
-                  <Input name="name" defaultValue={editTruck.name} required />
-                </div>
-                <div>
-                  <Label>{t("trucks.plateNumber")}</Label>
-                  <Input name="plateNumber" defaultValue={editTruck.plate_number} required />
-                </div>
-                <div>
-                  <Label>{t("trucks.model")}</Label>
-                  <Input name="model" defaultValue={editTruck.model} required />
-                </div>
-                <div>
-                  <Label>{t("trucks.year")}</Label>
-                  <Input name="year" type="number" defaultValue={editTruck.year} required />
-                </div>
-                <div>
-                  <Label>{t("jobs.status")}</Label>
-                  <Select name="status" defaultValue={editTruck.status}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="available">{t("trucks.available")}</SelectItem>
-                      <SelectItem value="in_use">{t("trucks.inUse")}</SelectItem>
-                      <SelectItem value="maintenance">{t("trucks.maintenance")}</SelectItem>
-                      <SelectItem value="out_of_service">{t("trucks.outOfService")}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>{t("trucks.driver")}</Label>
-                  <Input name="driver" defaultValue={editTruck.driver} required />
-                </div>
-                <div>
-                  <Label>{t("trucks.mileage")} (km)</Label>
-                  <Input name="mileage" type="number" defaultValue={editTruck.mileage} />
-                </div>
-                <div>
-                  <Label>{t("trucks.fuelLevel")} (%)</Label>
-                  <Input name="fuel_level" type="number" max={100} min={0} defaultValue={editTruck.fuel_level} />
-                </div>
-              </div>
-              <Button type="submit" className="w-full bg-steel hover:bg-steel-dark" disabled={loading.trucks}>
-                {t("trucks.updateTruck")}
-              </Button>
-            </form>
-          )}
+      <Dialog open={!!editTruck} onOpenChange={o => { if (!o) { setEditTruck(null); setForm(EMPTY_FORM); } }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Hindura Ikinyabiziga</DialogTitle></DialogHeader>
+          {editTruck && <TruckForm />}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirm */}
+      <Dialog open={!!deleteConfirm} onOpenChange={o => !o && setDeleteConfirm(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle className="text-red-600">Emeza Gusiba</DialogTitle></DialogHeader>
+          <p className="text-sm">Urafasha gusiba ikinyabiziga: <strong>"{deleteConfirm?.name} ({deleteConfirm?.plate_number})"</strong>?</p>
+          <div className="flex gap-2 pt-2">
+            <Button variant="destructive" className="flex-1" onClick={handleDelete}>Yego, siba</Button>
+            <Button variant="outline" className="flex-1" onClick={() => setDeleteConfirm(null)}>Hagarika</Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
-

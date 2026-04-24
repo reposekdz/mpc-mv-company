@@ -1,13 +1,17 @@
 import path from "path"
 import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "vite"
-import react from "@vitejs/plugin-react"
+import react from "@vitejs/plugin-react-swc"
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [react(), tailwindcss()],
+  define: {
+    'process.env.NODE_ENV': JSON.stringify(command === 'build' ? 'production' : 'development'),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "react/jsx-dev-runtime": path.resolve(__dirname, "./src/jsx-dev-runtime-shim.js"),
     },
   },
   server: {
@@ -21,4 +25,8 @@ export default defineConfig({
       },
     },
   },
-})
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+  },
+}))

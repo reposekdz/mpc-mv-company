@@ -72,7 +72,14 @@ const createJob = async (req, res, next) => {
        assigned_to || null, location, start_date || null, end_date || null,
        budget || 0, progress || 0, type, req.user.id]
     );
-    return apiResponse(res, result.rows[0], {}, 201);
+    const job = result.rows[0];
+    // Emit real-time event
+    const io = req.app.get('io');
+    if (io) {
+      io.to('managers').emit('job-created', job);
+      io.to('admins').emit('job-created', job);
+    }
+    return apiResponse(res, job, {}, 201);
   } catch (error) {
     next(error);
   }
@@ -100,7 +107,13 @@ const updateJob = async (req, res, next) => {
        WHERE id=$12 RETURNING *`,
       [title, description, status, priority, assigned_to, location, start_date, end_date, budget, progress, type, id]
     );
-    return apiResponse(res, result.rows[0]);
+    const job = result.rows[0];
+    const io = req.app.get('io');
+    if (io) {
+      io.to('managers').emit('job-updated', job);
+      io.to('admins').emit('job-updated', job);
+    }
+    return apiResponse(res, job);
   } catch (error) {
     next(error);
   }

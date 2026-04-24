@@ -7,14 +7,12 @@ const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
 
-// Load environment variables
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// Middleware
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
@@ -27,27 +25,32 @@ const isReplitOrigin = (origin) => {
   return origin.endsWith('.replit.dev') || origin.endsWith('.replit.app') || origin.endsWith('.repl.co');
 };
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || isReplitOrigin(origin) || process.env.NODE_ENV === 'development') {
+    if (!origin || allowedOrigins.includes(origin) || isReplitOrigin(origin) || NODE_ENV !== 'production') {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(null, true);
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept']
+};
+
+app.use(cors(corsOptions));
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
 }));
-app.use(helmet());
 app.use(morgan(NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 200,
   message: {
     success: false,
     error: 'Too many requests from this IP, please try again after 15 minutes',
@@ -59,68 +62,36 @@ const limiter = rateLimit({
 
 app.use('/api/', limiter);
 
-// Cache control middleware - no cache for dynamic API responses
 app.use('/api/', (req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.setHeader('Surrogate-Control', 'no-store');
   next();
 });
 
-// Database connection test
 const { pool } = require('./config/db');
 
-// Root API endpoint
+// ─── Root & Health ────────────────────────────────────────────────────────────
 app.get('/api/', (req, res) => {
   res.json({
     message: 'MOC-MV Company API',
-    version: '1.0.0',
-    documentation: 'API documentation available at /api/docs',
-    endpoints: {
-      health: '/api/health',
-      auth: '/api/auth',
-      jobs: '/api/jobs',
-      trucks: '/api/trucks',
-      employees: '/api/employees',
-      reports: '/api/reports',
-      consulting: '/api/consulting',
-      meetings: '/api/meetings',
-      analytics: '/api/analytics',
-      contact: '/api/contact'
-    },
-    features: [
-      'Pagination, sorting, filtering',
-      'Bulk operations',
-      'Rate limiting',
-      'Input validation',
-      'Authentication & Authorization',
-      'Comprehensive error handling'
-    ],
+    version: '2.0.0',
     timestamp: new Date().toISOString()
   });
 });
 
-// Health check endpoint
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1 + 1 AS result');
-    res.json({ 
-      status: 'healthy', 
-      database: 'connected', 
-      timestamp: new Date().toISOString(),
-      version: '1.0.0'
-    });
+    res.json({ status: 'healthy', database: 'connected', timestamp: new Date().toISOString() });
   } catch (error) {
-    console.error('Health check failed:', error);
     res.status(500).json({ status: 'unhealthy', error: error.message });
   }
 });
 
-// Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// API Routes
+// ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/jobs', require('./routes/jobs'));
 app.use('/api/trucks', require('./routes/trucks'));
@@ -131,13 +102,16 @@ app.use('/api/meetings', require('./routes/meetings'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/contact', require('./routes/contact'));
 
-// Serve React frontend in production (only if dist exists)
+// ─── Serve React Frontend ─────────────────────────────────────────────────────
 const distPath = path.join(__dirname, '../../dist');
 if (NODE_ENV === 'production' && fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, {
+    maxAge: '1d',
+    etag: true,
+  }));
 }
 
-// API 404 handler
+// ─── API 404 Handler ──────────────────────────────────────────────────────────
 app.use('/api/*', (req, res) => {
   res.status(404).json({
     success: false,
@@ -147,47 +121,57 @@ app.use('/api/*', (req, res) => {
   });
 });
 
-// SPA catch-all for production (must be after API routes)
+// ─── SPA Catch-all ────────────────────────────────────────────────────────────
 if (NODE_ENV === 'production' && fs.existsSync(distPath)) {
   app.get('*', (req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }
 
-// Global error handler
+// ─── Global Error Handler ─────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  const status = err.status || 500;
-  const message = err.message || 'Internal server error';
-  
-  res.status(status).json({
+  console.error('Unhandled error:', err.message);
+  res.status(err.status || 500).json({
     success: false,
-    error: message,
+    error: err.message || 'Internal server error',
     timestamp: new Date().toISOString(),
     ...(NODE_ENV === 'development' && { stack: err.stack })
   });
 });
 
-// Start server
+// ─── Socket.io Server ─────────────────────────────────────────────────────────
 const { Server } = require('socket.io');
 const http = require('http');
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
-    methods: ['GET', 'POST', 'PUT'],
-    credentials: true
-  }
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || isReplitOrigin(origin) || NODE_ENV === 'development') {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
+    methods: ['GET', 'POST'],
+    credentials: true,
+    allowedHeaders: ['Authorization', 'Content-Type'],
+  },
+  transports: ['polling', 'websocket'],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000,
 });
 
-// Socket.io events for real-time features
-io.on('connection', (socket) => {
-  console.log('👤 User connected:', socket.id);
+// Attach io to app so controllers can emit events
+app.set('io', io);
 
-  // Join rooms by role/user
+io.on('connection', (socket) => {
+  console.log(`👤 Socket connected: ${socket.id}`);
+
   socket.on('join-room', (room) => {
     socket.join(room);
-    console.log(`User ${socket.id} joined room: ${room}`);
+    console.log(`Socket ${socket.id} joined: ${room}`);
   });
 
   // Real-time truck GPS updates
@@ -198,41 +182,44 @@ io.on('connection', (socket) => {
   // Job progress updates
   socket.on('job-progress', (data) => {
     io.to('managers').emit('job-updated', data);
+    io.to('admins').emit('job-updated', data);
   });
 
-  // New notifications
   socket.on('send-notification', (data) => {
-    io.to(data.userId).emit('notification', data);
+    if (data.userId) {
+      io.to(data.userId).emit('notification', data);
+    } else {
+      io.to('managers').emit('notification', data);
+      io.to('admins').emit('notification', data);
+    }
   });
 
   socket.on('disconnect', () => {
-    console.log('👤 User disconnected:', socket.id);
+    console.log(`👤 Socket disconnected: ${socket.id}`);
   });
 });
 
-server.listen(PORT, () => {
+// Helper: broadcast to all admins & managers
+app.broadcastToManagers = (event, data) => {
+  io.to('managers').emit(event, data);
+  io.to('admins').emit(event, data);
+};
+
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server + Socket.io running on port ${PORT}`);
   console.log(`📊 Environment: ${NODE_ENV}`);
   console.log(`🔗 API URL: http://localhost:${PORT}/api`);
   console.log(`🔌 Socket.io: http://localhost:${PORT}`);
 });
 
-
-// Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('SIGTERM received: shutting down gracefully');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
+  server.close(() => { console.log('Server closed'); process.exit(0); });
 });
 
 process.on('SIGINT', () => {
   console.log('SIGINT received: shutting down gracefully');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
+  server.close(() => { console.log('Server closed'); process.exit(0); });
 });
 
-module.exports = app;
+module.exports = { app, io };
