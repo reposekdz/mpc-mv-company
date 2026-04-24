@@ -116,6 +116,24 @@ async function runMigration() {
     }
     console.log(`✅ Reset password for ${seededEmails.length} seed users to "${defaultPassword}"`);
 
+    // ─── Idempotent enum extensions used by the frontend ────────────────────
+    const enumPatches = [
+      { type: 'report_type', value: 'financial' },
+      { type: 'report_type', value: 'operational' },
+      { type: 'report_type', value: 'performance' },
+    ];
+    for (const { type, value } of enumPatches) {
+      try {
+        await dbClient.query(`ALTER TYPE ${type} ADD VALUE IF NOT EXISTS '${value}'`);
+      } catch (e) {
+        // PG <12 doesn't support IF NOT EXISTS; ignore if value already exists.
+        if (!/already exists/i.test(e.message || '')) {
+          console.warn(`⚠️  enum patch ${type}.${value}: ${e.message}`);
+        }
+      }
+    }
+    console.log('✅ Enum patches applied');
+
     await dbClient.end();
 
     console.log('\n🎉 Migration completed successfully!');

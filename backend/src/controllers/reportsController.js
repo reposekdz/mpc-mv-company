@@ -7,6 +7,7 @@ const normalizeReport = (row) => ({
   author: row.author || row.submitted_by_name || 'Manager',
   status: row.status || 'draft',
   summary: row.summary || row.description || null,
+  attachments: Array.isArray(row.attachments) ? row.attachments : (row.attachments || []),
 });
 
 const getAllReports = async (req, res, next) => {
@@ -65,12 +66,12 @@ const createReport = async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return apiError(res, 'Validation failed', 400, errors.array());
 
-    const { title, description, summary, content, type, status, author, period_start, period_end } = req.body;
+    const { title, description, summary, content, type, status, author, period_start, period_end, attachments } = req.body;
 
     const result = await query(
       `INSERT INTO reports
-        (title, description, summary, content, type, status, submitted_by, submitted_at, author, period_start, period_end)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8,$9,$10) RETURNING *`,
+        (title, description, summary, content, type, status, submitted_by, submitted_at, author, period_start, period_end, attachments)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW(),$8,$9,$10,$11) RETURNING *`,
       [
         title,
         description || summary || null,
@@ -82,6 +83,7 @@ const createReport = async (req, res, next) => {
         author || req.user?.name || 'Manager',
         period_start || null,
         period_end || null,
+        Array.isArray(attachments) ? JSON.stringify(attachments) : null,
       ]
     );
 
@@ -108,7 +110,7 @@ const updateReport = async (req, res, next) => {
 
     const {
       title, description, summary, content, type, status,
-      author, period_start, period_end,
+      author, period_start, period_end, attachments,
     } = req.body;
 
     const result = await query(
@@ -122,8 +124,9 @@ const updateReport = async (req, res, next) => {
         author=COALESCE($7,author),
         period_start=COALESCE($8,period_start),
         period_end=COALESCE($9,period_end),
+        attachments=COALESCE($10,attachments),
         updated_at=NOW()
-       WHERE id=$10 RETURNING *`,
+       WHERE id=$11 RETURNING *`,
       [
         title || null,
         description || summary || null,
@@ -134,6 +137,7 @@ const updateReport = async (req, res, next) => {
         author || null,
         period_start || null,
         period_end || null,
+        Array.isArray(attachments) ? JSON.stringify(attachments) : null,
         id,
       ]
     );

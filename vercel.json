@@ -13,7 +13,11 @@
       "source": "/socket.io/:path*",
       "destination": "https://mocmv-backend.onrender.com/socket.io/:path*"
     },
-    { "source": "/((?!api|socket.io|assets|.*\\..*).*)", "destination": "/index.html" }
+    {
+      "source": "/uploads/:path*",
+      "destination": "https://mocmv-backend.onrender.com/uploads/:path*"
+    },
+    { "source": "/((?!api|socket.io|uploads|assets|.*\\..*).*)", "destination": "/index.html" }
   ],
   "headers": [
     {

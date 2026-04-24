@@ -33,15 +33,17 @@ export function LanguageSwitcher({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <DropdownMenuTrigger key="lang-trigger" asChild>
         <Button variant={variant} size={size} className={`gap-2 ${className}`}>
-          <Globe className="w-4 h-4" />
+          <Globe key="globe-icon" className="w-4 h-4" />
           {showLabel && (
-            <span className="hidden sm:inline">{currentLang.flag} {currentLang.label}</span>
+            <span key="lang-label" className="hidden sm:inline">
+              {currentLang.flag} {currentLang.label}
+            </span>
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-[180px]">
+      <DropdownMenuContent key="lang-content" align="end" className="min-w-[180px]">
         {languages.map((lang) => (
           <DropdownMenuItem
             key={lang.code}

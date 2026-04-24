@@ -28,29 +28,32 @@ function ProtectedRoute({ children, requireManager = true }: { children: React.R
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<OverviewPage />} />
-          <Route path="jobs" element={<JobsPage />} />
-          <Route path="trucks" element={<TrucksPage />} />
-          <Route path="salaries" element={<SalariesPage />} />
-          <Route path="reports" element={<ReportsPage />} />
-          <Route path="analytics" element={<AnalyticsPage />} />
-          <Route path="consulting" element={<ConsultingPage />} />
-          <Route path="meetings" element={<MeetingsPage />} />
-        </Route>
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      <Toaster position="top-right" richColors />
+    <BrowserRouter key="router">
+      {[
+        <Routes key="app-routes">
+          <Route key="home" path="/" element={<LandingPage />} />
+          <Route
+            key="dashboard"
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route key="overview" index element={<OverviewPage />} />
+            <Route key="jobs" path="jobs" element={<JobsPage />} />
+            <Route key="trucks" path="trucks" element={<TrucksPage />} />
+            <Route key="salaries" path="salaries" element={<SalariesPage />} />
+            <Route key="reports" path="reports" element={<ReportsPage />} />
+            <Route key="analytics" path="analytics" element={<AnalyticsPage />} />
+            <Route key="consulting" path="consulting" element={<ConsultingPage />} />
+            <Route key="meetings" path="meetings" element={<MeetingsPage />} />
+          </Route>
+          <Route key="catchall" path="*" element={<Navigate to="/" replace />} />
+        </Routes>,
+        <Toaster key="toaster" position="top-right" richColors />,
+      ]}
     </BrowserRouter>
   );
 }

@@ -72,31 +72,34 @@ export function LandingPage() {
 
         <div className="relative max-w-7xl mx-auto px-6 py-20">
           <div className="grid lg:grid-cols-5 gap-12 items-center">
-            <motion.div 
-              initial="hidden" 
-              animate="visible" 
+            <motion.div
+              initial="hidden"
+              animate="visible"
               className="lg:col-span-3 text-white space-y-6"
             >
-              <motion.div custom={0} variants={fadeUp}>
+              <motion.div key="hero-badge" custom={0} variants={fadeUp}>
                 <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-steel/20 border border-steel/30 mb-6">
                   <Shield className="w-4 h-4 text-steel-light" />
                   <span className="text-sm font-medium text-steel-light">{t("nav.managementPortal")}</span>
                 </div>
               </motion.div>
 
-              <motion.h1 custom={1} variants={fadeUp} className="text-4xl md:text-6xl font-bold leading-tight">
-                {t("landing.heroTitle1")}
-                <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-steel-light to-blue-300">
+              <motion.h1 key="hero-title" custom={1} variants={fadeUp} className="text-4xl md:text-6xl font-bold leading-tight">
+                <span key="hero-line-1">{t("landing.heroTitle1")}</span>
+                <br key="hero-br" />
+                <span
+                  key="hero-line-2"
+                  className="text-transparent bg-clip-text bg-gradient-to-r from-steel-light to-blue-300"
+                >
                   {t("landing.heroTitle2")}
                 </span>
               </motion.h1>
 
-              <motion.p custom={2} variants={fadeUp} className="text-lg text-gray-300 max-w-2xl leading-relaxed">
+              <motion.p key="hero-desc" custom={2} variants={fadeUp} className="text-lg text-gray-300 max-w-2xl leading-relaxed">
                 {t("landing.heroDescription")}
               </motion.p>
 
-              <motion.div custom={3} variants={fadeUp} className="flex flex-wrap gap-4 pt-4">
+              <motion.div key="hero-cta" custom={3} variants={fadeUp} className="flex flex-wrap gap-4 pt-4">
                 <LoginDialog />
               </motion.div>
             </motion.div>
@@ -147,8 +150,8 @@ export function LandingPage() {
                          <h3 className="font-semibold text-white">{module.title}</h3>
                          {module.status === "live" && (
                            <Badge variant="secondary" className="h-5 px-1.5 bg-green-500/20 text-green-400 text-[10px] gap-1">
-                             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                             LIVE
+                             <span key="dot" className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                             <span key="label">LIVE</span>
                            </Badge>
                          )}
                        </div>

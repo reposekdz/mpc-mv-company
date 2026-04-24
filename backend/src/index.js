@@ -119,6 +119,7 @@ app.use('/api/consulting', require('./routes/consulting'));
 app.use('/api/meetings', require('./routes/meetings'));
 app.use('/api/analytics', require('./routes/analytics'));
 app.use('/api/contact', require('./routes/contact'));
+app.use('/api/uploads', require('./routes/uploads'));
 
 // ─── Serve React Frontend ─────────────────────────────────────────────────────
 const distPath = path.join(__dirname, '../../dist');

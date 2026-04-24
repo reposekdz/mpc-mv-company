@@ -239,6 +239,59 @@ export const analyticsApi = {
   create: (data: unknown) => api.post<any>('/analytics', data),
 };
 
+// Uploads API — multipart file uploads (real attachments, no mocks).
+// Returns array of { url, originalName, filename, size, mimeType, uploadedAt }.
+export interface UploadedFile {
+  url: string;
+  originalName: string;
+  filename: string;
+  size: number;
+  mimeType: string;
+  uploadedAt: string;
+  uploadedBy?: string | null;
+}
+
+export const uploadsApi = {
+  upload: async (files: File[] | FileList): Promise<UploadedFile[]> => {
+    const fileArr = Array.from(files);
+    if (fileArr.length === 0) return [];
+    const fd = new FormData();
+    for (const f of fileArr) fd.append('files', f);
+    const token = api.getToken();
+    const res = await fetch(`${API_BASE_URL}/uploads`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+      credentials: 'include',
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new ApiError(
+        json.message || json.error || `Upload failed (HTTP ${res.status})`,
+        res.status,
+        json
+      );
+    }
+    return (json.data ?? json) as UploadedFile[];
+  },
+  // Build an absolute URL for a file path returned by the server. The server
+  // returns "/uploads/reports/xyz.pdf"; in production with a Vercel rewrite
+  // this is already proxied, but a same-origin path works in dev too.
+  resolveUrl: (path: string): string => {
+    if (!path) return path;
+    if (/^https?:\/\//i.test(path)) return path;
+    // /uploads/* is served by the backend root, NOT under /api
+    if (path.startsWith('/uploads/')) {
+      // If a custom API URL is set (different origin), point uploads there.
+      if (SAFE_ENV_URL) {
+        return SAFE_ENV_URL.replace(/\/+$/, '') + path;
+      }
+      return path;
+    }
+    return path;
+  },
+};
+
 // Contact API
 export const contactApi = {
   submit: (data: {
